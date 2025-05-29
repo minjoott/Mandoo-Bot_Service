@@ -27,8 +27,8 @@ public class Message {
     @JsonProperty("isGroupChat")
     private boolean isGroupChat;
 
-    @CreationTimestamp
-    private LocalDateTime time;
+    @Builder.Default
+    private LocalDateTime time = LocalDateTime.now();
 
     @Column(columnDefinition = "vector(1536)")
     @JdbcTypeCode(SqlTypes.VECTOR)

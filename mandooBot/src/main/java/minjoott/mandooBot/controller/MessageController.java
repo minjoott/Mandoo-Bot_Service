@@ -21,12 +21,12 @@ public class MessageController {
 
         log.info(message.toString());
 
-        boolean needsReply = (message.isGroupChat() && msg.startsWith("만두야")) || !message.isGroupChat();  // "만두야" 부른 경우 또는 만두와의 1:1 채팅방이면, true
+        boolean needsReply = !message.isGroupChat() || msg.startsWith("만두");  // "만두"를 부른 경우 또는 만두와의 1:1 채팅방이면, true
         String reply = null;
 
         if (needsReply) {  // 메시지 응답 필수
             // 답변 생성
-            double threshold = 0.25;
+            double threshold = 0.2;
             reply = messageService.generateReply(message, threshold);
         }
 

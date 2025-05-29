@@ -8,7 +8,7 @@ import minjoott.mandooBot.domain.Message;
 import minjoott.mandooBot.repository.MessageRepository;
 
 @SpringBootTest
-class MessageServiceTest {
+class Example {
 
     @Autowired
     private MessageService messageService;
