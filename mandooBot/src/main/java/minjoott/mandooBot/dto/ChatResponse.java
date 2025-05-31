@@ -1,11 +1,11 @@
-package minjoott.mandooBot.domain;
+package minjoott.mandooBot.dto;
 
 import lombok.*;
 
 @Data
 @AllArgsConstructor
 @Builder
-public class BotResponse {
+public class ChatResponse {
     private boolean hasReply;
     private String reply;   // 없으면 null
 }

@@ -1,17 +1,18 @@
 package minjoott.mandooBot.service;
 
+import minjoott.mandooBot.service.chat.ChatService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import minjoott.mandooBot.domain.Message;
+import minjoott.mandooBot.domain.entity.Message;
 import minjoott.mandooBot.repository.MessageRepository;
 
 @SpringBootTest
-class MessageServiceTest {
+class ChatServiceTest {
 
     @Autowired
-    private MessageService messageService;
+    private ChatService chatService;
 
     @Autowired
     private MessageRepository messageRepository;
@@ -29,7 +30,7 @@ class MessageServiceTest {
         double threshold = 0.25;
 
         // when
-        String results = messageService.generateReply(message, threshold);
+        String results = chatService.createReply(message);
 
         // then: 결과 출력
         System.out.println(results);

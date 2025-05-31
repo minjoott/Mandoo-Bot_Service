@@ -1,6 +1,6 @@
 package minjoott.mandooBot.repository;
 
-import minjoott.mandooBot.domain.Message;
+import minjoott.mandooBot.domain.entity.Message;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

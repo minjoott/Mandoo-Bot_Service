@@ -1,4 +1,4 @@
-package minjoott.mandooBot.domain;
+package minjoott.mandooBot.domain.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
@@ -27,8 +27,9 @@ public class Message {
     @JsonProperty("isGroupChat")
     private boolean isGroupChat;
 
+    @Column(name = "date_time")
     @Builder.Default
-    private LocalDateTime time = LocalDateTime.now();
+    private LocalDateTime dateTime = LocalDateTime.now();
 
     @Column(columnDefinition = "vector(1536)")
     @JdbcTypeCode(SqlTypes.VECTOR)
