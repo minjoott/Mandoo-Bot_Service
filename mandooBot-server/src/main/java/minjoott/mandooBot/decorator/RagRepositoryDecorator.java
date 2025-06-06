@@ -31,7 +31,7 @@ public class RagRepositoryDecorator {
         Message message = messageVo.toEntity(embedding);
 
         Message savedMessage = messageRepository.save(message);
-        log.info("저장된 메시지 msg={} with embedding[0]={}", savedMessage.getMsg(), savedMessage.getEmbedding()[0]);
+        log.info("\n저장된 메시지 msg = {} with embedding[0] = {}", savedMessage.getMsg(), savedMessage.getEmbedding()[0]);
 
         return savedMessage.toMessageVo();
     }
@@ -43,7 +43,7 @@ public class RagRepositoryDecorator {
                 ? messageRepository.getMessagesWithEmbeddingByRoom(messageVo.getRoom(), embedding, distanceThreshold)
                 : messageRepository.getMessagesWithEmbeddingBySender(messageVo.getSender(), embedding, distanceThreshold);
 
-        log.info("임베딩으로 조회한 RAG Context 메시지 개수={}", messages.size());
+        log.info("\n임베딩으로 조회한 RAG Context 메시지 개수 = {}", messages.size());
 
         return messages.stream()
                 .map(Message::toRagContextMessageVo)

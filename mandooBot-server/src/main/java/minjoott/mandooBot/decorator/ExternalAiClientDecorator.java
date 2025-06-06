@@ -30,18 +30,17 @@ public class ExternalAiClientDecorator {
 
     public String createReplyByGpt(Prompt prompt) {
         String reply = callGptApi(prompt);
-        log.info("\nGPT가 생성한 reply={} with prompt={}", reply, prompt.getInstructions());
+        log.info("\nGPT가 생성한 reply = {} with prompt = {}", reply, prompt.getInstructions());
         return reply;
     }
 
     public List<RagContextMessageVo> getFilteredRagContextByGpt(Prompt prompt) {
         // 4) GPT 호출 → JSON 배열 형태(메시지 텍스트 목록)로 응답받음
-
         String rawResponse = callGptApi(prompt);
 
         // 5) '[' ~ ']' 사이 JSON 배열 내용만 잘라내기
         int startIdx = rawResponse.indexOf('[');
-        int endIdx   = rawResponse.lastIndexOf(']');
+        int endIdx = rawResponse.lastIndexOf(']');
         if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) {
             // JSON 구간을 찾지 못하면 빈 리스트 반환
             return Collections.emptyList();
@@ -52,12 +51,13 @@ public class ExternalAiClientDecorator {
         try {
             List<RagContextMessageVo> messageVos = objectMapper.readValue(
                     justJson,
-                    new TypeReference<List<RagContextMessageVo>>() {}
+                    new TypeReference<List<RagContextMessageVo>>() {
+                    }
             );
-            log.info("GPT로 필터링한 RAG Context 메시지 개수={}", messageVos.size());
+            log.info("\nGPT로 필터링한 RAG Context 메시지 개수 = {}", messageVos.size());
             return messageVos;
         } catch (Exception e) {
-            log.error("JSON 파싱 실패: {}", e.getMessage());
+            log.error("\nJSON 파싱 실패: {}", e.getMessage());
             return Collections.emptyList();
         }
     }

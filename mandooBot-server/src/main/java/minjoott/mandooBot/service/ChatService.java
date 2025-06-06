@@ -25,12 +25,12 @@ public class ChatService {
     private final ChatHistoryDecorator chatHistoryDecorator;
 
     public ChatResponse saveAndReplyIfNeeded(MessageVo messageVo) {
-        // 일단 DB에 메시지 무조건 저장 - 데코레이터에서 요청응답/예외처리 다 해주고 서비스에선 저장 시 리턴받아서 처리할 게 없으니 리턴값 저장 안함
-        ragRepositoryDecorator.saveMessageWithEmbedding(messageVo);
-
-        // 필요 시 답장 (RagReply로) - 여기선 답장만 받음
+        // 필요 시 답장 - 여기선 답장만 받음
         boolean hasReply = hasReplyChecker(messageVo);
         String reply = hasReply ? createReplyAndSaveChatHistory(messageVo) : null;
+
+        // 일단 DB에 메시지 무조건 저장 - 데코레이터에서 요청응답/예외처리 다 해주고 서비스에선 저장 시 리턴받아서 처리할 게 없으니 리턴값 저장 안함
+        ragRepositoryDecorator.saveMessageWithEmbedding(messageVo);
 
         return ChatResponse.builder()
                 .hasReply(hasReply)
@@ -40,7 +40,7 @@ public class ChatService {
 
     /** 1:1 채팅이거나, “만두”를 부른 메시지면 true */
     private boolean hasReplyChecker(MessageVo messageVo) {
-        return !messageVo.isGroupChat() || messageVo.getMsg().startsWith("만두");
+        return !messageVo.isGroupChat() || messageVo.getMsg().startsWith("만두야");
     }
 
     /** 답장 만들어서 리턴 */
@@ -50,17 +50,15 @@ public class ChatService {
         String query = messageVo.getMsg();
         String time = messageVo.getDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 
-        // 1) RAG 컨텍스트 조회
-        List<RagContextMessageVo> ragContextMessages = ragRepositoryDecorator.findMessagesWithEmbedding(messageVo);
-
-        // 조회한 RAG 컨텍스트를 GPT가 필터링
-        List<RagContextMessageVo> filteredRagContextMessageVos = getFilteredRagContextMessages(query, ragContextMessages);
-
         // 2) 최근 대화 이력 조회
         List<ChatHistoryVo> recentChatHistoryVo = chatHistoryDecorator.findRecentChatHistory(room);
 
-        // 3) Prompt 생성
-        Prompt prompt = promptService.buildRagPrompt(messageVo, filteredRagContextMessageVos, recentChatHistoryVo);
+        // RAG Context 필요한 메시지인지 판단
+        boolean isRagContextNeeded = needsRag(query);
+
+        // isRagContextNeeded 값에 따라 context 보충 결정
+        Prompt prompt = getPrompt(messageVo, query, recentChatHistoryVo, isRagContextNeeded);
+
         // 4) OpenAI 호출 및 답변 텍스트 추출
         String reply = externalAiClientDecorator.createReplyByGpt(prompt);
 
@@ -70,14 +68,35 @@ public class ChatService {
         return reply;
     }
 
-    private List<RagContextMessageVo> getFilteredRagContextMessages(String query, List<RagContextMessageVo> ragContextMessages) {
-        boolean hasRagContext = !ragContextMessages.isEmpty();
+    private boolean needsRag(String query) {
+        Prompt prompt = promptService.buildRagCheckerPrompt(query);
+        String replyByGpt = externalAiClientDecorator.createReplyByGpt(prompt);
+        return replyByGpt.equals("O");
+    }
 
-        if (hasRagContext) {
-            Prompt prompt = promptService.buildRagContextFilterPrompt(query, ragContextMessages);
-            return externalAiClientDecorator.getFilteredRagContextByGpt(prompt);
-        } else {
-            return Collections.emptyList();
+    private Prompt getPrompt(MessageVo messageVo, String query, List<ChatHistoryVo> recentChatHistoryVo, boolean isRagContextNeeded) {
+        Prompt prompt;
+        if (isRagContextNeeded) {
+            // CASE1: RAG Context 필요 O
+            List<RagContextMessageVo> ragContextMessages = ragRepositoryDecorator.findMessagesWithEmbedding(messageVo);
+
+            // 조회된 RAG Context가 있다면 필터링, 없다면 empty 저장
+            boolean hasRagContext = !ragContextMessages.isEmpty();
+            List<RagContextMessageVo> filteredRagContextMessageVos;
+            if (hasRagContext) {
+                Prompt filterPrompt = promptService.buildRagContextFilterPrompt(query, ragContextMessages);
+                filteredRagContextMessageVos = externalAiClientDecorator.getFilteredRagContextByGpt(filterPrompt);
+            }
+            else {
+                filteredRagContextMessageVos = Collections.emptyList();
+            }
+
+            prompt = promptService.buildRagPrompt(messageVo, filteredRagContextMessageVos, recentChatHistoryVo);
         }
+        else {
+            // CASE2: RAG Context 필요 X
+            prompt = promptService.buildSimplePrompt(messageVo, recentChatHistoryVo);
+        }
+        return prompt;
     }
 }
