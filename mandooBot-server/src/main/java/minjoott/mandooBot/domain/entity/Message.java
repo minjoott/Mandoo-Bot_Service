@@ -1,9 +1,9 @@
 package minjoott.mandooBot.domain.entity;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.persistence.Table;
 import lombok.*;
+import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import minjoott.mandooBot.domain.vo.MessageVo;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
@@ -34,13 +34,22 @@ public class Message {
     @Array(length = 1536)
     private float[] embedding;
 
-    /** Entity → VO 변환 메서드 */
-    public MessageVo toVo() {
+    /** Entity → MessageVO 변환 메서드 */
+    public MessageVo toMessageVo() {
         return MessageVo.builder()
                 .room(this.room)
                 .sender(this.sender)
                 .msg(this.msg)
                 .isGroupChat(this.isGroupChat)
+                .dateTime(this.dateTime)
+                .build();
+    }
+
+    /** Entity → RagContextMessageVO 변환 메서드 */
+    public RagContextMessageVo toRagContextMessageVo() {
+        return RagContextMessageVo.builder()
+                .sender(this.sender)
+                .msg(this.msg)
                 .dateTime(this.dateTime)
                 .build();
     }

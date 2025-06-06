@@ -5,12 +5,14 @@ import minjoott.mandooBot.decorator.ChatHistoryDecorator;
 import minjoott.mandooBot.decorator.ExternalAiClientDecorator;
 import minjoott.mandooBot.decorator.RagRepositoryDecorator;
 import minjoott.mandooBot.domain.vo.ChatHistoryVo;
+import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import minjoott.mandooBot.domain.vo.MessageVo;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
 import minjoott.mandooBot.domain.dto.ChatResponse;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -43,26 +45,39 @@ public class ChatService {
 
     /** 답장 만들어서 리턴 */
     private String createReplyAndSaveChatHistory(MessageVo messageVo) {  // 하나의 메서드에서... 기능 두개 수행?
-        String time = messageVo.getDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        String sender = messageVo.getSender();
         String room = messageVo.getRoom();
+        String sender = messageVo.getSender();
         String query = messageVo.getMsg();
+        String time = messageVo.getDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 
-        // 1) 임베딩 생성 + RAG 컨텍스트 조회 (private 메서드 활용)
-        List<MessageVo> ragContextMessages = ragRepositoryDecorator.findMessagesWithEmbedding(messageVo);
+        // 1) RAG 컨텍스트 조회
+        List<RagContextMessageVo> ragContextMessages = ragRepositoryDecorator.findMessagesWithEmbedding(messageVo);
+
+        // 조회한 RAG 컨텍스트를 GPT가 필터링
+        List<RagContextMessageVo> filteredRagContextMessageVos = getFilteredRagContextMessages(query, ragContextMessages);
 
         // 2) 최근 대화 이력 조회
         List<ChatHistoryVo> recentChatHistoryVo = chatHistoryDecorator.findRecentChatHistory(room);
 
         // 3) Prompt 생성
-        Prompt prompt = promptService.buildRagPrompt(messageVo, ragContextMessages, recentChatHistoryVo);
-
+        Prompt prompt = promptService.buildRagPrompt(messageVo, filteredRagContextMessageVos, recentChatHistoryVo);
         // 4) OpenAI 호출 및 답변 텍스트 추출
-        String reply = externalAiClientDecorator.createGptReply(prompt);
+        String reply = externalAiClientDecorator.createReplyByGpt(prompt);
 
         // 5) 요청된 메시지지와 생성된 답변을 최근 대화 이력에 저장 - 구현위치 변경필요한듯. 서비스계층에서 표현에 들어날 필요 X
         chatHistoryDecorator.saveChatHistory(room, new ChatHistoryVo(time, sender, query, reply));
 
         return reply;
+    }
+
+    private List<RagContextMessageVo> getFilteredRagContextMessages(String query, List<RagContextMessageVo> ragContextMessages) {
+        boolean hasRagContext = !ragContextMessages.isEmpty();
+
+        if (hasRagContext) {
+            Prompt prompt = promptService.buildRagContextFilterPrompt(query, ragContextMessages);
+            return externalAiClientDecorator.getFilteredRagContextByGpt(prompt);
+        } else {
+            return Collections.emptyList();
+        }
     }
 }
