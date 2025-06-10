@@ -26,7 +26,7 @@ public class RagRepositoryDecorator {
 
     @Transactional
     public MessageVo saveMessageWithEmbedding(MessageVo messageVo) {
-        float[] embedding = externalAiClientDecorator.createEmbedding(messageVo.getMsg());
+        float[] embedding = externalAiClientDecorator.getEmbedding(messageVo.getMsg());
 
         Message message = messageVo.toEntity(embedding);
 
@@ -37,13 +37,13 @@ public class RagRepositoryDecorator {
     }
 
     public List<RagContextMessageVo> findMessagesWithEmbedding(MessageVo messageVo) {
-        float[] embedding = externalAiClientDecorator.createEmbedding(messageVo.getMsg());
+        float[] embedding = externalAiClientDecorator.getEmbedding(messageVo.getMsg());
 
         List<Message> messages = messageVo.isGroupChat()
-                ? messageRepository.getMessagesWithEmbeddingByRoom(messageVo.getRoom(), embedding, distanceThreshold)
-                : messageRepository.getMessagesWithEmbeddingBySender(messageVo.getSender(), embedding, distanceThreshold);
+                ? messageRepository.findMessagesWithEmbeddingByRoom(messageVo.getRoom(), embedding, distanceThreshold)
+                : messageRepository.findMessagesWithEmbeddingBySender(messageVo.getSender(), embedding, distanceThreshold);
 
-        log.info("\n임베딩으로 조회한 RAG Context 메시지 개수 = {}", messages.size());
+        log.info("\n임베딩으로 조회한 RAG 컨텍스트 메시지 개수 = {}", messages.size());
 
         return messages.stream()
                 .map(Message::toRagContextMessageVo)

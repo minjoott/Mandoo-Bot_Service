@@ -1,6 +1,5 @@
 package minjoott.mandooBot.domain.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import minjoott.mandooBot.domain.vo.MessageVo;
 

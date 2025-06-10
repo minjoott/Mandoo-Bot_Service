@@ -12,13 +12,14 @@ import java.util.List;
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
     @Query(value = """
-        SELECT *
-          FROM messages
-         WHERE sender = :sender
-           AND embedding <=> CAST(:embedding AS vector) <= :threshold
-        """,
+            SELECT *
+              FROM messages
+             WHERE sender = :sender
+               AND embedding <=> CAST(:embedding AS vector) <= :threshold
+             ORDER BY date_time ASC
+            """,
             nativeQuery = true)
-    List<Message> getMessagesWithEmbeddingBySender(
+    List<Message> findMessagesWithEmbeddingBySender(
             @Param("sender") String sender,
             @Param("embedding") float[] embedding,
             @Param("threshold") double threshold
@@ -29,9 +30,10 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
           FROM messages
          WHERE room = :room
            AND embedding <=> CAST(:embedding AS vector) <= :threshold
+         ORDER BY date_time ASC
         """,
             nativeQuery = true)
-    List<Message> getMessagesWithEmbeddingByRoom(
+    List<Message> findMessagesWithEmbeddingByRoom(
             @Param("room") String room,
             @Param("embedding") float[] embedding,
             @Param("threshold") double threshold

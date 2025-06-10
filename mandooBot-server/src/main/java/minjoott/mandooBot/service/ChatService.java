@@ -5,14 +5,12 @@ import minjoott.mandooBot.decorator.ChatHistoryDecorator;
 import minjoott.mandooBot.decorator.ExternalAiClientDecorator;
 import minjoott.mandooBot.decorator.RagRepositoryDecorator;
 import minjoott.mandooBot.domain.vo.ChatHistoryVo;
-import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import minjoott.mandooBot.domain.vo.MessageVo;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
 import minjoott.mandooBot.domain.dto.ChatResponse;
 
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -24,79 +22,58 @@ public class ChatService {
     private final ExternalAiClientDecorator externalAiClientDecorator;
     private final ChatHistoryDecorator chatHistoryDecorator;
 
-    public ChatResponse saveAndReplyIfNeeded(MessageVo messageVo) {
-        // 필요 시 답장 - 여기선 답장만 받음
-        boolean hasReply = hasReplyChecker(messageVo);
+    public ChatResponse saveAndReplyIfShould(MessageVo messageVo) {
+        // 1) 답장이 필요한 메시지인지 여부를 판단
+        boolean hasReply = shouldReply(messageVo);
+
+        // 2) 답장이 필요한 경우, 답장 생성 후 메모리에 대화 내역 저장
         String reply = hasReply ? createReplyAndSaveChatHistory(messageVo) : null;
 
-        // 일단 DB에 메시지 무조건 저장 - 데코레이터에서 요청응답/예외처리 다 해주고 서비스에선 저장 시 리턴받아서 처리할 게 없으니 리턴값 저장 안함
+        // 3) 메시지를 임베딩과 함께 DB에 저장
         ragRepositoryDecorator.saveMessageWithEmbedding(messageVo);
 
-        return ChatResponse.builder()
-                .hasReply(hasReply)
-                .reply(reply)
-                .build();
+        // 4) 답장 여부 및 내용을 포함해 응답 객체 생성 후 반환
+        return new ChatResponse(hasReply, reply);
     }
 
-    /** 1:1 채팅이거나, “만두”를 부른 메시지면 true */
-    private boolean hasReplyChecker(MessageVo messageVo) {
+    private boolean shouldReply(MessageVo messageVo) {
         return !messageVo.isGroupChat() || messageVo.getMsg().startsWith("만두야");
     }
 
-    /** 답장 만들어서 리턴 */
-    private String createReplyAndSaveChatHistory(MessageVo messageVo) {  // 하나의 메서드에서... 기능 두개 수행?
+    private String createReplyAndSaveChatHistory(MessageVo messageVo) {
+        // ✅ 고민!!!!!! 책임 분리해야 하나? 일단 saveChatHistory는 비즈니스 로직에서 핵심 로직이 아니고,
+        //    createReply가 선행되어야만 하는 작업이기 때문에 하나의 메서드로 처리했음.
         String room = messageVo.getRoom();
         String sender = messageVo.getSender();
         String query = messageVo.getMsg();
-        String time = messageVo.getDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String dateTime = messageVo.getDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);  // ✅ LocalDateTime 타입으로 변경
 
-        // 2) 최근 대화 이력 조회
+        // 1) 해당 채팅방(room)에서 봇과의 최근 대화 기록(메모리)을 조회
         List<ChatHistoryVo> recentChatHistoryVo = chatHistoryDecorator.findRecentChatHistory(room);
 
-        // RAG Context 필요한 메시지인지 판단
-        boolean isRagContextNeeded = needsRag(query);
+        // 2) 현재 사용자의 메시지(query)에 대해 RAG 컨텍스트가 필요한지 판단
+        boolean isRagContextNeeded = needsRagContext(query);
 
-        // isRagContextNeeded 값에 따라 context 보충 결정
-        Prompt prompt = getPrompt(messageVo, query, recentChatHistoryVo, isRagContextNeeded);
+        // 3) RAG 컨텍스트 필요 여부에 따라 다음의 Prompt 생성
+        //    - 필요O: 최근 대화 + RAG 컨텍스트를 포함한 프롬프트
+        //    - 필요X: 최근 대화만 포함한 프롬프트
+        Prompt prompt = promptService.buildReplyPrompt(messageVo, query, recentChatHistoryVo, isRagContextNeeded);
 
-        // 4) OpenAI 호출 및 답변 텍스트 추출
-        String reply = externalAiClientDecorator.createReplyByGpt(prompt);
+        // 4) 생성된 Prompt를 바탕으로 GPT에게 답변 생성 요청
+        String replyByGpt = externalAiClientDecorator.getReplyByGpt(prompt);
 
-        // 5) 요청된 메시지지와 생성된 답변을 최근 대화 이력에 저장 - 구현위치 변경필요한듯. 서비스계층에서 표현에 들어날 필요 X
-        chatHistoryDecorator.saveChatHistory(room, new ChatHistoryVo(time, sender, query, reply));
+        // 5) 원본 메시지(query)와 생성된 답변(replyByGpt), 즉 대화 내역을 메모리에 저장
+        ChatHistoryVo chatHistoryVo = new ChatHistoryVo(dateTime, sender, query, replyByGpt);
+        chatHistoryDecorator.saveChatHistory(room, chatHistoryVo);
 
-        return reply;
+        // 6) 생성된 답변을 반환
+        return replyByGpt;
     }
 
-    private boolean needsRag(String query) {
-        Prompt prompt = promptService.buildRagCheckerPrompt(query);
-        String replyByGpt = externalAiClientDecorator.createReplyByGpt(prompt);
-        return replyByGpt.equals("O");
-    }
-
-    private Prompt getPrompt(MessageVo messageVo, String query, List<ChatHistoryVo> recentChatHistoryVo, boolean isRagContextNeeded) {
-        Prompt prompt;
-        if (isRagContextNeeded) {
-            // CASE1: RAG Context 필요 O
-            List<RagContextMessageVo> ragContextMessages = ragRepositoryDecorator.findMessagesWithEmbedding(messageVo);
-
-            // 조회된 RAG Context가 있다면 필터링, 없다면 empty 저장
-            boolean hasRagContext = !ragContextMessages.isEmpty();
-            List<RagContextMessageVo> filteredRagContextMessageVos;
-            if (hasRagContext) {
-                Prompt filterPrompt = promptService.buildRagContextFilterPrompt(query, ragContextMessages);
-                filteredRagContextMessageVos = externalAiClientDecorator.getFilteredRagContextByGpt(filterPrompt);
-            }
-            else {
-                filteredRagContextMessageVos = Collections.emptyList();
-            }
-
-            prompt = promptService.buildRagPrompt(messageVo, filteredRagContextMessageVos, recentChatHistoryVo);
-        }
-        else {
-            // CASE2: RAG Context 필요 X
-            prompt = promptService.buildSimplePrompt(messageVo, recentChatHistoryVo);
-        }
-        return prompt;
+    private boolean needsRagContext(String query) {
+        Prompt prompt = promptService.buildRagContextDecisionPrompt(query);
+        String replyByGpt = externalAiClientDecorator.getRagContextDecisionByGpt(prompt);
+        boolean isRagContextNeeded = replyByGpt.equals("O");
+        return isRagContextNeeded;
     }
 }
