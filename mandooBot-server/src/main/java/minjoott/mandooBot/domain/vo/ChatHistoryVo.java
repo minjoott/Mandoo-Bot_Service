@@ -8,7 +8,6 @@ import lombok.Getter;
 @AllArgsConstructor
 @Builder
 public class ChatHistoryVo {
-
     private String dateTime;
     private String user;
     private String query;

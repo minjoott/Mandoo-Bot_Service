@@ -4,7 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import minjoott.mandooBot.domain.entity.Message;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
-import minjoott.mandooBot.domain.vo.MessageVo;
+import minjoott.mandooBot.domain.vo.RequestMessageVo;
+import minjoott.mandooBot.domain.vo.SavedMessageVo;
 import minjoott.mandooBot.repository.MessageRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,8 +15,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Component
 @RequiredArgsConstructor
+@Component
 public class RagRepositoryDecorator {
 
     private final MessageRepository messageRepository;
@@ -25,27 +26,22 @@ public class RagRepositoryDecorator {
     private double distanceThreshold;
 
     @Transactional
-    public MessageVo saveMessageWithEmbedding(MessageVo messageVo) {
+    public SavedMessageVo saveMessageWithEmbedding(RequestMessageVo messageVo) {
         float[] embedding = externalAiClientDecorator.getEmbedding(messageVo.getMsg());
-
-        Message message = messageVo.toEntity(embedding);
-
-        Message savedMessage = messageRepository.save(message);
-        log.info("\n저장된 메시지 msg = {} with embedding[0] = {}", savedMessage.getMsg(), savedMessage.getEmbedding()[0]);
-
+        Message savedMessage = messageRepository.save(messageVo.toEntity(embedding));
+        log.info("\n💾 벡터 DB에 메시지 저장 성공 ⮕ id = {} | msg = \"{}\" | embedding[0] = {}", savedMessage.getId(), savedMessage.getMsg(), savedMessage.getEmbedding()[0]);
         return savedMessage.toMessageVo();
     }
 
-    public List<RagContextMessageVo> findMessagesWithEmbedding(MessageVo messageVo) {
+    public List<RagContextMessageVo> findMessagesWithEmbedding(SavedMessageVo messageVo) {
         float[] embedding = externalAiClientDecorator.getEmbedding(messageVo.getMsg());
 
-        List<Message> messages = messageVo.isGroupChat()
+        List<Message> ragContextMessages = messageVo.isGroupChat()
                 ? messageRepository.findMessagesWithEmbeddingByRoom(messageVo.getRoom(), embedding, distanceThreshold)
                 : messageRepository.findMessagesWithEmbeddingBySender(messageVo.getSender(), embedding, distanceThreshold);
+        log.info("\n🔍 RAG 컨텍스트 조회 ⮕ count = {} | query = \"{}\"", ragContextMessages.size(), messageVo.getMsg());
 
-        log.info("\n임베딩으로 조회한 RAG 컨텍스트 메시지 개수 = {}", messages.size());
-
-        return messages.stream()
+        return ragContextMessages.stream()
                 .map(Message::toRagContextMessageVo)
                 .collect(Collectors.toList());
     }

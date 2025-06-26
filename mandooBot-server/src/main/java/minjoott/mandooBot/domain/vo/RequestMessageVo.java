@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Getter
 @AllArgsConstructor
 @Builder
-public class MessageVo {
+public class RequestMessageVo {
     private String room;
     private String sender;
     private String msg;

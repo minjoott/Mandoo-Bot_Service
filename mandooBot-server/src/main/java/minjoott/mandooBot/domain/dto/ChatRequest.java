@@ -1,7 +1,7 @@
 package minjoott.mandooBot.domain.dto;
 
 import lombok.*;
-import minjoott.mandooBot.domain.vo.MessageVo;
+import minjoott.mandooBot.domain.vo.RequestMessageVo;
 
 @Data
 @AllArgsConstructor
@@ -13,8 +13,8 @@ public class ChatRequest {
     private Boolean isGroupChat;
 
     /** DTO → VO 변환 */
-    public MessageVo toVo() {
-        return MessageVo.builder()
+    public RequestMessageVo toVo() {
+        return RequestMessageVo.builder()
                 .room(this.room)
                 .sender(this.sender)
                 .msg(this.msg)

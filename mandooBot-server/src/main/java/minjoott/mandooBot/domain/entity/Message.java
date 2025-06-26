@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import jakarta.persistence.Table;
 import lombok.*;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
-import minjoott.mandooBot.domain.vo.MessageVo;
+import minjoott.mandooBot.domain.vo.SavedMessageVo;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
 
@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 @Table(name = "messages")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @Builder
-@ToString(exclude = "embedding")
 public class Message {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -35,12 +34,12 @@ public class Message {
     private float[] embedding;
 
     /** Entity → MessageVO 변환 메서드 */
-    public MessageVo toMessageVo() {
-        return MessageVo.builder()
+    public SavedMessageVo toMessageVo() {
+        return SavedMessageVo.builder()
+                .id(this.id)
                 .room(this.room)
                 .sender(this.sender)
                 .msg(this.msg)
-                .isGroupChat(this.isGroupChat)
                 .dateTime(this.dateTime)
                 .build();
     }
