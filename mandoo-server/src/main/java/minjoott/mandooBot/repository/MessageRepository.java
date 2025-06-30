@@ -15,27 +15,31 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             SELECT *
               FROM messages
              WHERE sender = :sender
-               AND embedding <=> CAST(:embedding AS vector) <= :threshold
-             ORDER BY date_time ASC
+               AND embedding <#> CAST(:embedding AS vector) <= :maxDist
+             ORDER BY embedding <#> CAST(:embedding AS vector) ASC
+             LIMIT :limit
             """,
             nativeQuery = true)
     List<Message> findMessagesWithEmbeddingBySender(
             @Param("sender") String sender,
             @Param("embedding") float[] embedding,
-            @Param("threshold") double threshold
+            @Param("maxDist") double maxDistance,
+            @Param("limit") int limit
     );
 
     @Query(value = """
         SELECT *
           FROM messages
          WHERE room = :room
-           AND embedding <=> CAST(:embedding AS vector) <= :threshold
-         ORDER BY date_time ASC
+           AND embedding <#> CAST(:embedding AS vector) <= :maxDist
+         ORDER BY embedding <#> CAST(:embedding AS vector) ASC
+         LIMIT :limit
         """,
             nativeQuery = true)
     List<Message> findMessagesWithEmbeddingByRoom(
             @Param("room") String room,
             @Param("embedding") float[] embedding,
-            @Param("threshold") double threshold
+            @Param("maxDist") double maxDistance,
+            @Param("limit") int limit
     );
 }

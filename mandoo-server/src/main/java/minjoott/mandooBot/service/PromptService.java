@@ -37,7 +37,7 @@ public class PromptService {
         List<RagContextMessageVo> filteredRagContextMessageVos = ragContextMessageVos.isEmpty()
                 ? Collections.emptyList()
                 : externalAiClientDecorator.getFilteredRagContext(
-                        buildRagContextFilterPrompt(messageVo.getSender(), ragContextMessageVos)
+                        buildRagContextFilterPrompt(messageVo.getSender(), messageVo.getMsg(), ragContextMessageVos)
                 );
         String ragContextSection = assembleRagContextSection(filteredRagContextMessageVos);
         String chatHistorySection = assembleChatHistorySection(recentChatHistoryVos);
@@ -59,11 +59,11 @@ public class PromptService {
         return new Prompt(List.of(systemMessage, contextMessage, userMessage), OpenAiOptions.REPLY);
     }
 
-    private Prompt buildRagContextFilterPrompt(String query, List<RagContextMessageVo> ragContextMessageVos) {
+    private Prompt buildRagContextFilterPrompt(String sender, String query, List<RagContextMessageVo> ragContextMessageVos) {
         SystemMessage systemMessage = new SystemMessage(PromptTemplate.RAG_CONTEXT_FILTER_SYSTEM_TEMPLATE.format(query, query, query));
 
         String ragContextSection = assembleRagContextSection(ragContextMessageVos);
-        UserMessage userMessage = new UserMessage(ragContextSection + "\n사용자 메시지: " + query + "\n");
+        UserMessage userMessage = new UserMessage("\n" + sender + "의 메시지: " + query + "\n" + ragContextSection);
 
         return new Prompt(List.of(systemMessage, userMessage), OpenAiOptions.RAG_CONTEXT_FILTER);
     }

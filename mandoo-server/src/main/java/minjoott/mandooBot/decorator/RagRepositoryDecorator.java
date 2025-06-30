@@ -22,8 +22,10 @@ public class RagRepositoryDecorator {
     private final MessageRepository messageRepository;
     private final ExternalAiClientDecorator externalAiClientDecorator;
 
-    @Value("${chat.rag.distance.threshold}")
-    private double distanceThreshold;
+    @Value("${chat.rag.distance.max}")
+    private double maxDistance;
+    @Value("${chat.rag.distance.limit}")
+    private int distanceLimit;
 
     @Transactional
     public SavedMessageVo saveMessageWithEmbedding(RequestMessageVo messageVo) {
@@ -37,8 +39,8 @@ public class RagRepositoryDecorator {
         float[] embedding = externalAiClientDecorator.getEmbedding(messageVo.getMsg());
 
         List<Message> ragContextMessages = messageVo.isGroupChat()
-                ? messageRepository.findMessagesWithEmbeddingByRoom(messageVo.getRoom(), embedding, distanceThreshold)
-                : messageRepository.findMessagesWithEmbeddingBySender(messageVo.getSender(), embedding, distanceThreshold);
+                ? messageRepository.findMessagesWithEmbeddingByRoom(messageVo.getRoom(), embedding, maxDistance, distanceLimit)
+                : messageRepository.findMessagesWithEmbeddingBySender(messageVo.getSender(), embedding, maxDistance, distanceLimit);
         log.info("\n🔍 RAG 컨텍스트 조회 ⮕ count = {} | query = \"{}\"", ragContextMessages.size(), messageVo.getMsg());
 
         return ragContextMessages.stream()

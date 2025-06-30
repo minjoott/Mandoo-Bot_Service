@@ -22,7 +22,6 @@ public final class OpenAiOptions {
             .model("gpt-4.1")
             .temperature(0.0)
             .topP(1.0)
-            .N(1)
             .maxTokens(5000)
             .build();
 

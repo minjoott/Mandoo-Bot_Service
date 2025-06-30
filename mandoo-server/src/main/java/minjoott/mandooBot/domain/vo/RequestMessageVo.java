@@ -19,7 +19,6 @@ public class RequestMessageVo {
     @Builder.Default
     private LocalDateTime dateTime = LocalDateTime.now();
 
-    /** VO → Entity 변환 메서드 */
     public Message toEntity(float[] embedding) {
         return Message.builder()
                 .room(this.room)

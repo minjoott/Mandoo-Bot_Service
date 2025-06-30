@@ -7,12 +7,11 @@ import minjoott.mandooBot.domain.vo.RequestMessageVo;
 @AllArgsConstructor
 @Builder
 public class ChatRequest {
-    private String room;
-    private String sender;
-    private String msg;
-    private Boolean isGroupChat;
+    @NonNull private String room;
+    @NonNull private String sender;
+    @NonNull private String msg;
+    @NonNull private Boolean isGroupChat;
 
-    /** DTO → VO 변환 */
     public RequestMessageVo toVo() {
         return RequestMessageVo.builder()
                 .room(this.room)

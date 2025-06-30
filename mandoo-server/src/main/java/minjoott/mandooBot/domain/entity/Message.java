@@ -33,7 +33,6 @@ public class Message {
     @Array(length = 1536)
     private float[] embedding;
 
-    /** Entity → MessageVO 변환 메서드 */
     public SavedMessageVo toMessageVo() {
         return SavedMessageVo.builder()
                 .id(this.id)
@@ -44,7 +43,6 @@ public class Message {
                 .build();
     }
 
-    /** Entity → RagContextMessageVO 변환 메서드 */
     public RagContextMessageVo toRagContextMessageVo() {
         return RagContextMessageVo.builder()
                 .sender(this.sender)
