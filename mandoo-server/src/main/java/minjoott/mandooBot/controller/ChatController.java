@@ -7,6 +7,8 @@ import minjoott.mandooBot.domain.dto.ChatRequest;
 import minjoott.mandooBot.service.ChatService;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+
 @Slf4j
 @RequiredArgsConstructor
 @RestController
@@ -16,7 +18,7 @@ public class ChatController {
     private final ChatService chatService;
 
     @PostMapping
-    public ChatResponse chat(@RequestBody ChatRequest chatRequest) {
-        return chatService.saveMessageAndReplyIfNeeded(chatRequest.toVo());
+    public ChatResponse chat(@Valid @RequestBody ChatRequest chatRequest) {
+        return chatService.handleChat(chatRequest.toVo());
     }
 }

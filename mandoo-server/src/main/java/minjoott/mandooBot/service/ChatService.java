@@ -24,10 +24,15 @@ public class ChatService {
     private final ExternalAiClientDecorator externalAiClientDecorator;
     private final ChatHistoryDecorator chatHistoryDecorator;
 
-    public ChatResponse saveMessageAndReplyIfNeeded(RequestMessageVo messageVo) {
+    public ChatResponse handleChat(RequestMessageVo messageVo) {
         SavedMessageVo savedMessageVo = ragRepositoryDecorator.saveMessageWithEmbedding(messageVo);
-        String reply = needsReply(messageVo) ? generateReplyAndSaveChatHistory(savedMessageVo) : null;
-        return new ChatResponse(reply != null, reply);
+
+        if (!needsReply(messageVo)) {
+            return ChatResponse.noReply();
+        }
+
+        String reply = generateReplyAndSaveChatHistory(savedMessageVo);
+        return ChatResponse.withReply(reply);
     }
 
     private boolean needsReply(RequestMessageVo messageVo) {
