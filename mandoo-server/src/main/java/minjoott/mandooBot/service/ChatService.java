@@ -31,7 +31,7 @@ public class ChatService {
             return ChatResponse.noReply();
         }
 
-        String reply = generateReplyAndSaveChatHistory(savedMessageVo);
+        String reply = generateReply(savedMessageVo);
         return ChatResponse.withReply(reply);
     }
 
@@ -39,15 +39,31 @@ public class ChatService {
         return !messageVo.isGroupChat() || messageVo.getMsg().startsWith("만두야");
     }
 
-    private String generateReplyAndSaveChatHistory(SavedMessageVo messageVo) {
-        List<ChatHistoryVo> recentChatHistoryVos = chatHistoryDecorator.findRecentChatHistory(messageVo.getRoom());
-        Prompt prompt = needsRagContext(messageVo.getMsg())
-                ? promptService.buildRagReplyPrompt(messageVo, recentChatHistoryVos)
-                : promptService.buildSimpleReplyPrompt(messageVo, recentChatHistoryVos);
-        String reply = externalAiClientDecorator.getReply(prompt);
+    private String generateReply(SavedMessageVo messageVo) {
+        List<ChatHistoryVo> recentChats = loadRecentChats(messageVo.getRoom());
+        Prompt prompt = buildPrompt(messageVo, recentChats);
+        String reply = generateReply(prompt);
+        persistReply(messageVo, reply);
+        return reply;
+    }
+
+    private List<ChatHistoryVo> loadRecentChats(String room) {
+        return chatHistoryDecorator.findRecentChatHistory(room);
+    }
+
+    private Prompt buildPrompt(SavedMessageVo messageVo, List<ChatHistoryVo> recentChats) {
+        return needsRagContext(messageVo.getMsg())
+                ? promptService.buildRagReplyPrompt(messageVo, recentChats)
+                : promptService.buildSimpleReplyPrompt(messageVo, recentChats);
+    }
+
+    private String generateReply(Prompt prompt) {
+        return externalAiClientDecorator.getReply(prompt);
+    }
+
+    private void persistReply(SavedMessageVo messageVo, String reply) {
         chatHistoryDecorator.saveChatHistory(messageVo.getRoom(), messageVo.toChatHistory(reply));
         printLog(messageVo, reply);
-        return reply;
     }
 
     private void printLog(SavedMessageVo messageVo, String reply) {
