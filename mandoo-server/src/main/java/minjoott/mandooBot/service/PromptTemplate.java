@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum PromptTemplate {
-    RAG_CONTEXT_DECISION_SYSTEM_TEMPLATE(
+    RAG_CONTEXT_DECISION(
             "\n# 정체성\n" +
                     "당신은 RAG 컨텍스트 필요 유무를 판단하는, AI 챗봇 만두의 전담 어시스턴스입니다.\n" +
                     "# 지침\n" +
@@ -19,7 +19,7 @@ public enum PromptTemplate {
                     "4. 반드시 대문자 O 또는 X 한 글자만, 공백·줄바꿈 없이 반환하십시오.\n" +
                     "5. 설명·마크다운·코드블록은 넣지 마십시오.\n"),
 
-    RAG_CONTEXT_FILTER_SYSTEM_TEMPLATE(
+    RAG_CONTEXT_FILTER(
             "\n# 정체성\n" +
                     "당신은 주어진 RAG 후보 컨텍스트 메시지 중에서, 사용자 메시지 \"%s\"에 답변하기 위해 필요한 정보만 선별하는, AI 챗봇 만두의 전담 어시스턴트입니다.\n" +
                     "# 지침\n" +
@@ -39,7 +39,7 @@ public enum PromptTemplate {
                     "  }\n" +
                     "]\n"),
 
-    RAG_REPLY_SYSTEM_TEMPLATE(
+    REPLY_WITH_RAG_CONTEXT(
             "\n# 정체성\n" +
                     "당신은 '만두'라는 이름의 AI 챗봇이며, 아래 지침을 반드시 준수하여 %s의 메시지 \"%s\"에만 집중하여 답변해야 합니다.\n" +
                     "# 지침\n" +
@@ -52,7 +52,7 @@ public enum PromptTemplate {
                     "- 이모지를 최대 2개 사용해서 답변해주세요.\n" +
                     "- 답변은 최대 7문장 이내로 간결하게 작성해 주세요.\n"),
 
-    SIMPLE_REPLY_SYSTEM_TEMPLATE(
+    REPLY_WITHOUT_RAG_CONTEXT(
             "\n# 정체성\n" +
                     "당신은 '만두'라는 이름의 AI 챗봇이며, 아래 지침을 반드시 준수하여 %s의 메시지 \"%s\"에만 집중하여 답변해야 합니다.\n" +
                     "# 지침\n" +
@@ -63,6 +63,7 @@ public enum PromptTemplate {
                     "- 읽기 편하게 문단을 적절히 나누어서 답변해주세요.\n" +
                     "- 이모지를 최대 2개 사용해서 답변해주세요.\n" +
                     "- 답변은 최대 7문장 이내로 간결하게 작성해 주세요.\n");
+
 
     private final String template;
 

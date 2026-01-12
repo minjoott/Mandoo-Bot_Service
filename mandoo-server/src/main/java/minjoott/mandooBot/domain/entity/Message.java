@@ -3,12 +3,15 @@ package minjoott.mandooBot.domain.entity;
 import jakarta.persistence.*;
 import jakarta.persistence.Table;
 import lombok.*;
+import minjoott.mandooBot.domain.dto.RedisChatTurn;
+import minjoott.mandooBot.domain.vo.ChatTurnVo;
+import minjoott.mandooBot.domain.vo.MessageVo;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
-import minjoott.mandooBot.domain.vo.SavedMessageVo;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
-
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "messages")
@@ -33,8 +36,14 @@ public class Message {
     @Array(length = 1536)
     private float[] embedding;
 
-    public SavedMessageVo toMessageVo() {
-        return SavedMessageVo.builder()
+    public static List<RagContextMessageVo> toVoList(List<Message> messages) {
+        return messages.stream()
+                .map(Message::toRagContextMessageVo)
+                .collect(Collectors.toList());
+    }
+
+    public MessageVo toMessageVo() {
+        return MessageVo.builder()
                 .id(this.id)
                 .room(this.room)
                 .sender(this.sender)
@@ -50,4 +59,5 @@ public class Message {
                 .dateTime(this.dateTime)
                 .build();
     }
+
 }

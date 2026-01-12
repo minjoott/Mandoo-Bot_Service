@@ -2,13 +2,13 @@ package minjoott.mandooBot.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import minjoott.mandooBot.decorator.ChatHistoryDecorator;
 import minjoott.mandooBot.decorator.ExternalAiClientDecorator;
 import minjoott.mandooBot.decorator.RagRepositoryDecorator;
+import minjoott.mandooBot.decorator.RecentChatRedisDecorator;
 import minjoott.mandooBot.domain.dto.ChatResponse;
-import minjoott.mandooBot.domain.vo.ChatHistoryVo;
-import minjoott.mandooBot.domain.vo.RequestMessageVo;
-import minjoott.mandooBot.domain.vo.SavedMessageVo;
+import minjoott.mandooBot.domain.vo.ChatTurnVo;
+import minjoott.mandooBot.domain.vo.MessageVo;
+import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
 
@@ -22,69 +22,67 @@ public class ChatService {
     private final PromptService promptService;
     private final RagRepositoryDecorator ragRepositoryDecorator;
     private final ExternalAiClientDecorator externalAiClientDecorator;
-    private final ChatHistoryDecorator chatHistoryDecorator;
+    private final RecentChatRedisDecorator recentChatRedisDecorator;
 
-    public ChatResponse handleChat(RequestMessageVo messageVo) {
-        SavedMessageVo savedMessageVo = ragRepositoryDecorator.saveMessageWithEmbedding(messageVo);
-
-        if (!needsReply(messageVo)) {
-            return ChatResponse.noReply();
-        }
-
-        String reply = generateReply(savedMessageVo);
-        return ChatResponse.withReply(reply);
+    public ChatResponse handleChat(MessageVo message) {
+        boolean hasReply = needsReply(message);
+        float[] embedding = ragRepositoryDecorator.generateEmbedding(message.getMsg());
+        String reply = needsReply(message) ? generateReply(message, embedding) : null;
+        saveChat(message, embedding, reply);
+        return new ChatResponse(hasReply, reply);
     }
 
-    private boolean needsReply(RequestMessageVo messageVo) {
-        return !messageVo.isGroupChat() || messageVo.getMsg().startsWith("만두야");
+    private boolean needsReply(MessageVo message) {
+        return !message.isGroupChat() || message.getMsg().startsWith("만두야");
     }
 
-    private String generateReply(SavedMessageVo messageVo) {
-        List<ChatHistoryVo> recentChats = loadRecentChats(messageVo.getRoom());
-        Prompt prompt = buildPrompt(messageVo, recentChats);
-        String reply = generateReply(prompt);
-        persistReply(messageVo, reply);
-        return reply;
-    }
+    private String generateReply(MessageVo message, float[] embedding) {
+        List<ChatTurnVo> recentChatTurns = recentChatRedisDecorator.loadRecentChats(message.getRoom());
 
-    private List<ChatHistoryVo> loadRecentChats(String room) {
-        return chatHistoryDecorator.findRecentChatHistory(room);
-    }
+        List<RagContextMessageVo> ragContext = getRagContextIfNeeded(message, embedding);
 
-    private Prompt buildPrompt(SavedMessageVo messageVo, List<ChatHistoryVo> recentChats) {
-        return needsRagContext(messageVo.getMsg())
-                ? promptService.buildRagReplyPrompt(messageVo, recentChats)
-                : promptService.buildSimpleReplyPrompt(messageVo, recentChats);
-    }
+        Prompt prompt = ragContext.isEmpty()
+                ? promptService.buildReplyPrompt(message, recentChatTurns)
+                : promptService.buildReplyPrompt(message, recentChatTurns, ragContext);
 
-    private String generateReply(Prompt prompt) {
         return externalAiClientDecorator.getReply(prompt);
     }
 
-    private void persistReply(SavedMessageVo messageVo, String reply) {
-        chatHistoryDecorator.saveChatHistory(messageVo.getRoom(), messageVo.toChatHistory(reply));
-        printLog(messageVo, reply);
+    private List<RagContextMessageVo> getRagContextIfNeeded(MessageVo message, float[] embedding) {
+        if (!needsRag(message.getMsg())) return List.of();
+
+        List<RagContextMessageVo> candidates = ragRepositoryDecorator.findMessagesWithEmbedding(message, embedding);
+        if (candidates.isEmpty()) return List.of();
+
+        Prompt filterPrompt = promptService.buildRagContextFilterPrompt(message.getSender(), message.getMsg(), candidates);
+        return externalAiClientDecorator.getFilteredRagContext(filterPrompt);
     }
 
-    private void printLog(SavedMessageVo messageVo, String reply) {
-        if (messageVo.isGroupChat()) {
-            log.info("\n📱 (n:1) [{}] {} 요청 메시지 = \"{}\"\n🤖 만두봇 답변 = \"{}\"",
-                    messageVo.getRoom(),
-                    messageVo.getSender(),
-                    messageVo.getMsg().replaceAll("\\r?\\n", " "),
-                    reply.replaceAll("\\r?\\n", " "));
-        } else {
-            log.info("\n📱 (1:1) {}의 메시지 = \"{}\"\n🤖 만두봇 답변 = \"{}\"",
-                    messageVo.getSender(),
-                    messageVo.getMsg().replaceAll("\\r?\\n", " "),
-                    reply.replaceAll("\\r?\\n", " "));
-        }
-    }
-
-    private boolean needsRagContext(String query) {
+    private boolean needsRag(String query) {
         Prompt prompt = promptService.buildRagContextDecisionPrompt(query);
         boolean decision = externalAiClientDecorator.getRagContextDecision(prompt);
         log.info("\n🧠 RAG 컨텍스트 필요 유무 결정 ⮕ decision = {} | msg = \"{}\"", decision, query);
         return decision;
+    }
+
+    private void saveChat(MessageVo message, float[] embedding, String reply) {
+        ragRepositoryDecorator.saveMessageWithEmbedding(message, embedding);
+        recentChatRedisDecorator.pushTurn(message.getRoom(), message.toRedisChatTurn(reply));
+        printLog(message, reply);
+    }
+
+    private void printLog(MessageVo message, String reply) {
+        if (message.isGroupChat()) {
+            log.info("\n📱 (n:1) [{}] {} 요청 메시지 = \"{}\"\n🤖 만두봇 답변 = \"{}\"",
+                    message.getRoom(),
+                    message.getSender(),
+                    message.getMsg().replaceAll("\\r?\\n", " "),
+                    reply.replaceAll("\\r?\\n", " "));
+        } else {
+            log.info("\n📱 (1:1) {}의 메시지 = \"{}\"\n🤖 만두봇 답변 = \"{}\"",
+                    message.getSender(),
+                    message.getMsg().replaceAll("\\r?\\n", " "),
+                    reply.replaceAll("\\r?\\n", " "));
+        }
     }
 }
