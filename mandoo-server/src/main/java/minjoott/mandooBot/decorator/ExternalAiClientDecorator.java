@@ -56,12 +56,6 @@ public class ExternalAiClientDecorator {
                             vo.getDateTime(), vo.getSender(), vo.getMsg().replaceAll("\\r?\\n", " ")
                     ))
                     .collect(Collectors.joining("\n"));
-
-            log.info(
-                    "\n⏳ RAG 컨텍스트 필터링 후 ⮕ count = {} | \nfilteredMessages = \n{}",
-                    messageVos.size(),
-                    assembledMessageVos
-            );
             return messageVos;
         } catch (Exception e) {
             log.error("\n⛔️ JSON 파싱 실패: {}", e.getMessage());

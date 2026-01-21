@@ -37,20 +37,25 @@ public class ChatService {
     }
 
     private String generateReply(MessageVo message, float[] embedding) {
-        List<ChatTurnVo> recentChatTurns = recentChatRedisDecorator.loadRecentChats(message.getRoom());
-
-        List<RagContextMessageVo> ragContext = getRagContextIfNeeded(message, embedding);
-
-        Prompt prompt = ragContext.isEmpty()
-                ? promptService.buildReplyPrompt(message, recentChatTurns)
-                : promptService.buildReplyPrompt(message, recentChatTurns, ragContext);
-
+        Prompt prompt = getPrompt(message, embedding);
         return externalAiClientDecorator.getReply(prompt);
     }
 
-    private List<RagContextMessageVo> getRagContextIfNeeded(MessageVo message, float[] embedding) {
-        if (!needsRag(message.getMsg())) return List.of();
+    private Prompt getPrompt(MessageVo message, float[] embedding) {
+        List<ChatTurnVo> recentChatTurns = recentChatRedisDecorator.loadRecentChats(message.getRoom());
 
+        Prompt prompt;
+        if (!needsRag(message.getMsg())) {
+            prompt = promptService.buildReplyPrompt(message, recentChatTurns);
+        }
+        else {
+            List<RagContextMessageVo> ragContextMessages = getRagContext(message, embedding);
+            prompt = promptService.buildReplyPrompt(message, recentChatTurns, ragContextMessages);
+        }
+        return prompt;
+    }
+
+    private List<RagContextMessageVo> getRagContext(MessageVo message, float[] embedding) {
         List<RagContextMessageVo> candidates = ragRepositoryDecorator.findMessagesWithEmbedding(message, embedding);
         if (candidates.isEmpty()) return List.of();
 
@@ -60,29 +65,11 @@ public class ChatService {
 
     private boolean needsRag(String query) {
         Prompt prompt = promptService.buildRagContextDecisionPrompt(query);
-        boolean decision = externalAiClientDecorator.getRagContextDecision(prompt);
-        log.info("\n🧠 RAG 컨텍스트 필요 유무 결정 ⮕ decision = {} | msg = \"{}\"", decision, query);
-        return decision;
+        return externalAiClientDecorator.getRagContextDecision(prompt);
     }
 
     private void saveChat(MessageVo message, float[] embedding, String reply) {
         ragRepositoryDecorator.saveMessageWithEmbedding(message, embedding);
         recentChatRedisDecorator.pushTurn(message.getRoom(), message.toRedisChatTurn(reply));
-        printLog(message, reply);
-    }
-
-    private void printLog(MessageVo message, String reply) {
-        if (message.isGroupChat()) {
-            log.info("\n📱 (n:1) [{}] {} 요청 메시지 = \"{}\"\n🤖 만두봇 답변 = \"{}\"",
-                    message.getRoom(),
-                    message.getSender(),
-                    message.getMsg().replaceAll("\\r?\\n", " "),
-                    reply.replaceAll("\\r?\\n", " "));
-        } else {
-            log.info("\n📱 (1:1) {}의 메시지 = \"{}\"\n🤖 만두봇 답변 = \"{}\"",
-                    message.getSender(),
-                    message.getMsg().replaceAll("\\r?\\n", " "),
-                    reply.replaceAll("\\r?\\n", " "));
-        }
     }
 }

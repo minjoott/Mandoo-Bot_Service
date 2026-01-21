@@ -1,6 +1,24 @@
 version: "3.8"
 
 services:
+  app:
+    build: .
+    container_name: mandoo-app
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mandoo_db
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: mandoo-postgres

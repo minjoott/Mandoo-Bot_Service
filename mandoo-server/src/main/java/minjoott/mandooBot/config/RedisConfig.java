@@ -3,37 +3,37 @@ package minjoott.mandooBot.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import minjoott.mandooBot.domain.dto.RedisChatTurn;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.data.redis.serializer.*;
 
 @Configuration
 public class RedisConfig {
 
     @Bean
-    public RedisTemplate<String, RedisChatTurn> chatTurnRedisTemplate(
-            RedisConnectionFactory connectionFactory
-    ) {
-        RedisTemplate<String, RedisChatTurn> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
-
-        // Key: String
-        template.setKeySerializer(new StringRedisSerializer());
-
-        // Value: JSON
-        ObjectMapper mapper = new ObjectMapper()
+    public ObjectMapper redisObjectMapper() {
+        return new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
 
-        Jackson2JsonRedisSerializer<RedisChatTurn> valueSerializer =
-                new Jackson2JsonRedisSerializer<>(RedisChatTurn.class);
-        valueSerializer.setObjectMapper(mapper);
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(
+            RedisConnectionFactory connectionFactory,
+            ObjectMapper redisObjectMapper
+    ) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
 
+        RedisSerializer<String> keySerializer = new StringRedisSerializer();
+        RedisSerializer<Object> valueSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+
+        template.setKeySerializer(keySerializer);
         template.setValueSerializer(valueSerializer);
+        template.setHashKeySerializer(keySerializer);
+        template.setHashValueSerializer(valueSerializer);
 
         template.afterPropertiesSet();
         return template;

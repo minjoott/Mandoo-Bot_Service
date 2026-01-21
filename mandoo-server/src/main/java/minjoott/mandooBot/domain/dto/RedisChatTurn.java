@@ -40,5 +40,4 @@ public class RedisChatTurn {
                 .reply(this.getReply())
                 .build();
     }
-
 }

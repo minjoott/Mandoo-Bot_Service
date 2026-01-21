@@ -32,14 +32,11 @@ public class RagRepositoryDecorator {
         List<Message> ragContextMessages = message.isGroupChat()
                 ? messageRepository.findMessagesWithEmbeddingByRoom(message.getRoom(), embedding, maxDistance, distanceLimit)
                 : messageRepository.findMessagesWithEmbeddingBySender(message.getSender(), embedding, maxDistance, distanceLimit);
-        log.info("\n🔍 RAG 컨텍스트 조회 ⮕ count = {} | query = \"{}\"", ragContextMessages.size(), message.getMsg());
-
         return Message.toVoList(ragContextMessages);
     }
 
     public MessageVo saveMessageWithEmbedding(MessageVo message, float[] embedding) {
         Message savedMessage = messageRepository.save(message.toEntity(embedding));
-        log.info("\n💾 벡터 DB에 메시지 저장 성공 ⮕ id = {} | msg = \"{}\" | embedding[0] = {}", savedMessage.getId(), savedMessage.getMsg(), savedMessage.getEmbedding()[0]);
         return savedMessage.toMessageVo();
     }
 

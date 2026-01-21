@@ -25,12 +25,10 @@ public class PromptService {
         return new Prompt(List.of(systemMessage, userMessage), OpenAiOptions.RAG_CONTEXT_DECISION);
     }
 
-    public Prompt buildRagContextFilterPrompt(String sender, String query, List<RagContextMessageVo> semanticMessageVos) {
+    public Prompt buildRagContextFilterPrompt(String sender, String query, List<RagContextMessageVo> ragContextMessages) {
         SystemMessage systemMessage = new SystemMessage(PromptTemplate.RAG_CONTEXT_FILTER.format(query, query, query));
-
-        String ragContextSection = assembleSimilarMessages(semanticMessageVos);
-        UserMessage userMessage = new UserMessage("\n" + sender + "의 메시지: " + query + "\n" + ragContextSection);
-
+        String ragContextSection = assembleRagContextMessages(ragContextMessages);
+        UserMessage userMessage = new UserMessage("\n" + sender + ": " + query + "\n" + ragContextSection);
         return new Prompt(List.of(systemMessage, userMessage), OpenAiOptions.RAG_CONTEXT_FILTER);
     }
 
@@ -41,12 +39,12 @@ public class PromptService {
         return new Prompt(List.of(baseSystemMessage, recentContextMessage, userQueryMessage), OpenAiOptions.REPLY);
     }
 
-    public Prompt buildReplyPrompt(MessageVo message, List<ChatTurnVo> recentChatTurns, List<RagContextMessageVo> similarMessages) {
+    public Prompt buildReplyPrompt(MessageVo message, List<ChatTurnVo> recentChatTurns, List<RagContextMessageVo> ragContextMessages) {
         SystemMessage baseSystemMessage = new SystemMessage(PromptTemplate.REPLY_WITH_RAG_CONTEXT.format(message.getSender(), message.getMsg()));
         SystemMessage recentContextMessage = toRecentContextMessage(recentChatTurns);
-        SystemMessage similarContextMessage = toSimilarContextMessage(similarMessages);
+        SystemMessage ragContextMessage = toSimilarContextMessage(ragContextMessages);
         UserMessage userQueryMessage = new UserMessage(message.getSender() + ": " + message.getMsg() + "\n");
-        return new Prompt(List.of(baseSystemMessage, recentContextMessage, similarContextMessage, userQueryMessage), OpenAiOptions.REPLY);
+        return new Prompt(List.of(baseSystemMessage, recentContextMessage, ragContextMessage, userQueryMessage), OpenAiOptions.REPLY);
     }
 
     private SystemMessage toRecentContextMessage(List<ChatTurnVo> recentChatTurns) {
@@ -54,9 +52,9 @@ public class PromptService {
         return new SystemMessage(recentChatTurnSection);
     }
 
-    private SystemMessage toSimilarContextMessage(List<RagContextMessageVo> similarMessages) {
-        String similarMessageSection = assembleSimilarMessages(similarMessages);
-        return new SystemMessage(similarMessageSection);
+    private SystemMessage toSimilarContextMessage(List<RagContextMessageVo> ragContextMessages) {
+        String ragContextMessageSection = assembleRagContextMessages(ragContextMessages);
+        return new SystemMessage(ragContextMessageSection);
     }
 
     private String assembleRecentChatTurns(List<ChatTurnVo> recentChatTurns) {
@@ -78,11 +76,11 @@ public class PromptService {
         return sb.toString();
     }
 
-    private String assembleSimilarMessages(List<RagContextMessageVo> similarMessages) {
+    private String assembleRagContextMessages(List<RagContextMessageVo> ragContextMessages) {
         StringBuilder sb = new StringBuilder();
-        sb.append("\n[참고: 관련 과거 대화 | 오래된순]\n");
+        sb.append("\n[참고: 관련 과거 메시지 | 오래된순]\n");
 
-        for (RagContextMessageVo m : similarMessages) {
+        for (RagContextMessageVo m : ragContextMessages) {
             String sender = m.getSender().replaceAll("\\r?\\n", " ").trim();
             String msg = m.getMsg().replaceAll("\\r?\\n", " ").trim();
             String dateTime = m.getDateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
