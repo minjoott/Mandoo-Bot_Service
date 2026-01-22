@@ -46,9 +46,10 @@ public class ChatDebugLogAspect {
 
         for (int i = 0; i < turns.size(); i++) {
             ChatTurnVo t = turns.get(i);
+            String reply = (t.getReply() == null) ? "" : t.getReply().replaceAll("\\r?\\n", " ");
             sb.append("\n  ├─ [").append(i).append("] ")
                     .append(t.getUser()).append(": \"").append(t.getQuery().replaceAll("\\r?\\n", " ")).append("\"")
-                    .append(" | 만두: \"").append(t.getReply().replaceAll("\\r?\\n", " ")).append("\"");
+                    .append(" | 만두: \"").append(reply).append("\"");
         }
 
         log.info(sb.toString());
@@ -84,7 +85,7 @@ public class ChatDebugLogAspect {
             RagContextMessageVo c = filtered.get(i);
             sb.append("\n  ├─ [").append(i).append("] ")
                     .append(c.getDateTime()).append(" ")
-                    .append(c.getSender()).append(": ")
+                    .append(c.getSender()).append(": \"")
                     .append(c.getMsg().replaceAll("\\r?\\n", " ")).append("\"");
         }
 

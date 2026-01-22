@@ -7,6 +7,7 @@ import minjoott.mandooBot.domain.dto.RedisChatTurn;
 import minjoott.mandooBot.domain.entity.Message;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Getter
 @Builder
@@ -20,7 +21,7 @@ public class MessageVo {
     private boolean isGroupChat;
 
     @Builder.Default
-    private LocalDateTime dateTime = LocalDateTime.now();
+    private LocalDateTime dateTime = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
     public Message toEntity(float[] embedding) {
         return Message.builder()

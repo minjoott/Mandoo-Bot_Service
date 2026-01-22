@@ -34,17 +34,19 @@ public class PromptService {
 
     public Prompt buildReplyPrompt(MessageVo message, List<ChatTurnVo> recentChatTurns) {
         SystemMessage baseSystemMessage = new SystemMessage(PromptTemplate.REPLY_WITHOUT_RAG_CONTEXT.format(message.getSender(), message.getMsg()));
+        SystemMessage nowSystemMessage = new SystemMessage("#현재 시각 정보 : "+ message.getDateTime());
         SystemMessage recentContextMessage = toRecentContextMessage(recentChatTurns);
         UserMessage userQueryMessage = new UserMessage(message.getSender() + ": " + message.getMsg() + "\n");
-        return new Prompt(List.of(baseSystemMessage, recentContextMessage, userQueryMessage), OpenAiOptions.REPLY);
+        return new Prompt(List.of(baseSystemMessage, nowSystemMessage, recentContextMessage, userQueryMessage), OpenAiOptions.REPLY);
     }
 
     public Prompt buildReplyPrompt(MessageVo message, List<ChatTurnVo> recentChatTurns, List<RagContextMessageVo> ragContextMessages) {
         SystemMessage baseSystemMessage = new SystemMessage(PromptTemplate.REPLY_WITH_RAG_CONTEXT.format(message.getSender(), message.getMsg()));
+        SystemMessage nowSystemMessage = new SystemMessage("#현재 시각 정보 : "+ message.getDateTime());
         SystemMessage recentContextMessage = toRecentContextMessage(recentChatTurns);
         SystemMessage ragContextMessage = toSimilarContextMessage(ragContextMessages);
         UserMessage userQueryMessage = new UserMessage(message.getSender() + ": " + message.getMsg() + "\n");
-        return new Prompt(List.of(baseSystemMessage, recentContextMessage, ragContextMessage, userQueryMessage), OpenAiOptions.REPLY);
+        return new Prompt(List.of(baseSystemMessage, nowSystemMessage, recentContextMessage, ragContextMessage, userQueryMessage), OpenAiOptions.REPLY);
     }
 
     private SystemMessage toRecentContextMessage(List<ChatTurnVo> recentChatTurns) {

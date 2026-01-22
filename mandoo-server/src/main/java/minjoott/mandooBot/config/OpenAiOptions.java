@@ -8,7 +8,7 @@ import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 public final class OpenAiOptions {
 
     public final OpenAiEmbeddingOptions EMBEDDING = OpenAiEmbeddingOptions.builder()
-            .model("text-embedding-ada-002")
+            .model("text-embedding-3-small")
             .build();
 
     public final OpenAiChatOptions RAG_CONTEXT_DECISION = OpenAiChatOptions.builder()
@@ -27,8 +27,8 @@ public final class OpenAiOptions {
 
     public final OpenAiChatOptions REPLY = OpenAiChatOptions.builder()
             .model("gpt-4.1")
-            .temperature(0.5)
-            .topP(0.3)
+            .temperature(0.6)
+            .topP(1.0)
             .presencePenalty(0.3)
             .maxTokens(250)
             .build();
