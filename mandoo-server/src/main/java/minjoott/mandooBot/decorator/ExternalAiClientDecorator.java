@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import minjoott.mandooBot.config.OpenAiOptions;
-import minjoott.mandooBot.domain.dto.RedisBufferDecision;
+import minjoott.mandooBot.domain.vo.BufferCompleteDecision;
+import minjoott.mandooBot.domain.vo.NeedsMandooDecision;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -27,23 +28,16 @@ public class ExternalAiClientDecorator {
     private final OpenAiEmbeddingModel openAiEmbeddingModel;
     private final ObjectMapper objectMapper;
 
-    public RedisBufferDecision getBufferDecision(Prompt prompt) {
-        String raw = callChatApi(prompt);
+    public BufferCompleteDecision getBufferCompleteDecision(Prompt prompt) {
+        return parseJsonSafely(prompt, BufferCompleteDecision.class,
+                BufferCompleteDecision.builder().complete("X").build()
+        );
+    }
 
-        // '{' ~ '}' 사이 JSON만 잘라서 파싱 (모델이 앞뒤 텍스트를 섞어도 방어)
-        int s = raw.indexOf('{');
-        int e = raw.lastIndexOf('}');
-        if (s < 0 || e < 0 || e <= s) {
-            return RedisBufferDecision.builder().complete("X").needsMandoo("N").build();
-        }
-
-        String json = raw.substring(s, e + 1).trim();
-        try {
-            return objectMapper.readValue(json, RedisBufferDecision.class);
-        } catch (Exception ex) {
-            log.error("⛔️ BufferDecision JSON 파싱 실패: {}", ex.getMessage());
-            return RedisBufferDecision.builder().complete("X").needsMandoo("N").build();
-        }
+    public NeedsMandooDecision getNeedsMandooDecision(Prompt prompt) {
+        return parseJsonSafely(prompt, NeedsMandooDecision.class,
+                NeedsMandooDecision.builder().needsMandoo("X").build()
+        );
     }
 
     public float[] getEmbedding(String query) {
@@ -83,6 +77,22 @@ public class ExternalAiClientDecorator {
     private String callChatApi(Prompt prompt) {
         ChatResponse response = openAiChatModel.call(prompt);
         return response.getResult().getOutput().getText();
+    }
+
+    private <T> T parseJsonSafely(Prompt prompt, Class<T> clazz, T fallback) {
+        String raw = callChatApi(prompt);
+
+        int s = raw.indexOf('{');
+        int e = raw.lastIndexOf('}');
+        if (s < 0 || e < 0 || e <= s) return fallback;
+
+        String json = raw.substring(s, e + 1).trim();
+        try {
+            return objectMapper.readValue(json, clazz);
+        } catch (Exception ex) {
+            log.error("⛔️ Decision JSON 파싱 실패: {}", ex.getMessage());
+            return fallback;
+        }
     }
 }
 

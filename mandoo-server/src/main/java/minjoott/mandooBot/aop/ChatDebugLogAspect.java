@@ -3,8 +3,9 @@ package minjoott.mandooBot.aop;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import minjoott.mandooBot.domain.dto.RedisBufferDecision;
+import minjoott.mandooBot.domain.vo.BufferCompleteDecision;
 import minjoott.mandooBot.domain.vo.ChatTurnVo;
+import minjoott.mandooBot.domain.vo.NeedsMandooDecision;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import org.aspectj.lang.annotation.*;
 import org.slf4j.MDC;
@@ -35,14 +36,24 @@ public class ChatDebugLogAspect {
         );
     }
 
-    // ✅ (0) 버퍼 통합본 확정 여부 및 만두 답변 필요 여부 확인 로그
+    // ✅ (0) 버퍼 통합본 "완결 여부" 판단 로그
     @AfterReturning(
-            pointcut = "execution(minjoott.mandooBot.domain.dto.RedisBufferDecision minjoott.mandooBot.decorator.ExternalAiClientDecorator.getBufferDecision(..))",
+            pointcut = "execution(minjoott.mandooBot.domain.vo.BufferCompleteDecision " +
+                    "minjoott.mandooBot.decorator.ExternalAiClientDecorator.getBufferCompleteDecision(..))",
             returning = "decision"
     )
-    public void logBufferDecision(RedisBufferDecision decision) {
-        log.info("🧠[trace={}] bufferDecision complete={} needsMandoo={}",
-                trace(), decision.getComplete(), decision.getNeedsMandoo());
+    public void logBufferCompleteDecision(BufferCompleteDecision decision) {
+        log.info("🧠[trace={}] bufferComplete={}", trace(), decision.getComplete());
+    }
+
+    // ✅ (0) 버퍼 통합본 "만두 답변 필요 여부" 판단 로그
+    @AfterReturning(
+            pointcut = "execution(minjoott.mandooBot.domain.vo.NeedsMandooDecision " +
+                    "minjoott.mandooBot.decorator.ExternalAiClientDecorator.getNeedsMandooDecision(..))",
+            returning = "decision"
+    )
+    public void logNeedsMandooDecision(NeedsMandooDecision decision) {
+        log.info("🧠[trace={}] needsMandoo={}", trace(), decision.getNeedsMandoo());
     }
 
     // ✅ (1) RAG 필요 여부 결정 결과
@@ -70,10 +81,11 @@ public class ChatDebugLogAspect {
 
         for (int i = 0; i < turns.size(); i++) {
             ChatTurnVo t = turns.get(i);
-            String reply = (t.getReply() == null) ? "" : t.getReply().replaceAll("\\r?\\n", " ");
             sb.append("\n  ├─ [").append(i).append("] ")
-                    .append(t.getUser()).append(": \"").append(t.getQuery().replaceAll("\\r?\\n", " ")).append("\"")
-                    .append(" | 만두: \"").append(reply).append("\"");
+                    .append(t.getUser()).append(": \"").append(t.getQuery().replaceAll("\\r?\\n", " ")).append("\"");
+            if (t.getReply() != null) {
+                sb.append(" | 만두: \"").append(t.getReply().replaceAll("\\r?\\n", " ")).append("\"");
+            }
         }
 
         log.info(sb.toString());

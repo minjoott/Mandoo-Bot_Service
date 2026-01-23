@@ -11,6 +11,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -29,6 +31,9 @@ public class RecentChatRedisDecorator {
     @Value("${chat.history.max-turns}")
     private int maxTurns;
 
+    @Value("${chat.history.decision-max-turns}")
+    private int decisionMaxTurns;
+
     /**
      * 방이 완전히 멈추면 키 통째로 정리되게 하는 TTL (WINDOW + α)
      * - push/load가 더 이상 안 오면 TTL만 줄어들어 결국 키가 사라짐
@@ -40,25 +45,40 @@ public class RecentChatRedisDecorator {
         return "chat:turns:zset:" + roomId;
     }
 
-    /** room의 최근 대화 로드: "최근 24시간" AND "최신 MAX_TURNS개" */
-    public List<ChatTurnVo> loadRecentChats(String roomId) {
+    /** room의 최근 대화 로드: "최근 24시간" AND "최신 decisionMaxTurns개" */
+    public List<ChatTurnVo> loadRecentChatsForNeedsMandooDecision(String roomId) {
+        return loadRecentChats(roomId, decisionMaxTurns);
+    }
+
+    /** room의 최근 대화 로드: "최근 24시간" AND "최신 limit개" */
+    public List<ChatTurnVo> loadRecentChats(String roomId, int limit) {
         String k = key(roomId);
 
         long now = System.currentTimeMillis();
         long min = now - WINDOW.toMillis();
 
-        // 1) 24시간 지난 데이터 정리 (읽을 때도 한 번 정리해두면 안정적)
+        // 1) 24시간 지난 데이터 정리
         redisTemplate.opsForZSet().removeRangeByScore(k, 0, min - 1);
 
-        // 2) 24시간 범위 중 최신 MAX_TURNS개만 조회 (오래된 것부터)
-        Set<String> jsonSet = redisTemplate.opsForZSet().rangeByScore(k, min, now, 0, maxTurns);
+        // 2) 최신 limit개 조회 (최신 → 과거)
+        Set<String> jsonSet =
+                redisTemplate.opsForZSet().reverseRangeByScore(k, min, now, 0, limit);
 
-        if (jsonSet.isEmpty()) return List.of();
+        if (jsonSet == null || jsonSet.isEmpty()) return List.of();
 
-        return jsonSet.stream()
+        List<ChatTurnVo> list = new ArrayList<>(jsonSet.stream()
                 .map(this::readTurn)
                 .map(RedisChatTurn::toVo)
-                .toList();
+                .toList()
+        );
+        Collections.reverse(list);
+        return list;
+
+    }
+
+    /** room의 최근 대화 로드: "최근 24시간" AND "최신 maxTurns개" */
+    public List<ChatTurnVo> loadRecentChats(String roomId) {
+        return loadRecentChats(roomId, maxTurns);
     }
 
     /** room에 대화 턴 추가 + 24시간/개수 기준으로 정리 */

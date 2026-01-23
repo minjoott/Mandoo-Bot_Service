@@ -19,15 +19,22 @@ import java.util.List;
 @Service
 public class PromptService {
 
-    public Prompt buildBufferDecisionPrompt(String mergedBufferText) {
-        SystemMessage systemMessage = new SystemMessage(PromptTemplate.MESSAGE_BUFFER_DECISION.format(mergedBufferText));
-        UserMessage userMessage = new UserMessage("버퍼 통합본: " + mergedBufferText);
-        return new Prompt(List.of(systemMessage, userMessage), OpenAiOptions.MESSAGE_BUFFER_DECISION);
+    public Prompt buildBufferCompleteDecisionPrompt(String mergedBufferText) {
+        SystemMessage systemMessage = new SystemMessage(PromptTemplate.BUFFER_COMPLETE_DECISION.format(mergedBufferText));
+        UserMessage userMessage = new UserMessage("#버퍼 통합본: " + mergedBufferText);
+        return new Prompt(List.of(systemMessage, userMessage), OpenAiOptions.BUFFER_COMPLETE_DECISION);
+    }
+
+    public Prompt buildNeedsMandooDecisionPrompt(String mergedBufferText, List<ChatTurnVo> recentChatTurns) {
+        SystemMessage systemMessage = new SystemMessage(PromptTemplate.NEEDS_MANDOO_DECISION.format(mergedBufferText));
+        SystemMessage recentContextMessage = new SystemMessage(assembleRecentChatTurns(recentChatTurns));
+        UserMessage userMessage = new UserMessage("#버퍼 통합본: " + mergedBufferText);
+        return new Prompt(List.of(systemMessage, recentContextMessage, userMessage), OpenAiOptions.NEEDS_MANDOO_DECISION);
     }
 
     public Prompt buildRagContextDecisionPrompt(String query) {
         SystemMessage systemMessage = new SystemMessage(PromptTemplate.RAG_CONTEXT_DECISION.format(query));
-        UserMessage userMessage = new UserMessage("사용자 메시지: " + query);
+        UserMessage userMessage = new UserMessage("#사용자 메시지: " + query);
         return new Prompt(List.of(systemMessage, userMessage), OpenAiOptions.RAG_CONTEXT_DECISION);
     }
 

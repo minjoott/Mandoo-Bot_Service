@@ -7,7 +7,6 @@ import minjoott.mandooBot.decorator.ExternalAiClientDecorator;
 import minjoott.mandooBot.decorator.RagRepositoryDecorator;
 import minjoott.mandooBot.decorator.RecentChatRedisDecorator;
 import minjoott.mandooBot.domain.dto.ChatResponse;
-import minjoott.mandooBot.domain.dto.RedisBufferDecision;
 import minjoott.mandooBot.domain.vo.ChatTurnVo;
 import minjoott.mandooBot.domain.vo.MessageVo;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
@@ -33,31 +32,35 @@ public class ChatService {
 
         // 2) 버퍼 통합본 생성
         String merged = bufferRedisDecorator.readMergedBuffer(message.getRoom(), message.getSender());
-        if (merged.isBlank()) {
-            return new ChatResponse(false, null);
-        }
+        if (merged.isBlank()) return new ChatResponse(false, null);
 
-        // 3) *1 완성 여부 + *2 만두 필요 여부 판단 (LLM 1회)
-        Prompt decisionPrompt = promptService.buildBufferDecisionPrompt(merged);
-        RedisBufferDecision decision = externalAiClientDecorator.getBufferDecision(decisionPrompt);
+        // ✅ (A) buffer complete decision 단계
+        Prompt completePrompt = promptService.buildBufferCompleteDecisionPrompt(merged);
+        boolean complete = externalAiClientDecorator.getBufferCompleteDecision(completePrompt).isComplete();
 
-        // complete = X → PASS (응답/저장 없음)
-        if (!decision.isComplete()) return new ChatResponse(false, null);
+        // 결정 프롬프트 (5개)
+        List<ChatTurnVo> decisionRecentChats = recentChatRedisDecorator.loadRecentChatsForNeedsMandooDecision(message.getRoom());
+
+        // complete = X → PASS
+        if (!complete) return new ChatResponse(false, null);
 
         // complete = O → 버퍼 초기화
         bufferRedisDecorator.clearBuffer(message.getRoom(), message.getSender());
 
-        // 이제부터는 "완성된 통합본"만 다룸
+        // 완성된 통합본 MessageVo
         MessageVo mergedMessage = message.withCompleteMsg(merged);
 
-        // 4) 완성본은 무조건 저장해야 하므로 embedding 1회 생성
+        // 4) AI 호출 2: needsMandoo 판단 (최근대화 포함)
+        Prompt needsPrompt = promptService.buildNeedsMandooDecisionPrompt(merged, decisionRecentChats);
+        boolean hasReply = externalAiClientDecorator.getNeedsMandooDecision(needsPrompt).isNeedsMandoo();
+
+        // 5) 완성본은 무조건 저장해야 하므로 embedding 1회 생성
         float[] embedding = ragRepositoryDecorator.generateEmbedding(mergedMessage.getMsg());
 
-        // 5) needsMandoo = O 인 경우에만 답변 생성
-        boolean hasReply = decision.isNeedsMandoo();
+        // 6) needsMandoo = O 인 경우에만 답변 생성
         String reply = hasReply ? generateReply(mergedMessage, embedding) : null;
 
-        // 6) 완성본 DB + 최근대화 Redis 저장
+        // 7) 완성본 DB + 최근대화 Redis 저장
         saveChat(mergedMessage, embedding, reply);
 
         return new ChatResponse(hasReply, reply);
@@ -69,15 +72,16 @@ public class ChatService {
     }
 
     private Prompt getPrompt(MessageVo message, float[] embedding) {
-        List<ChatTurnVo> recentChatTurns = recentChatRedisDecorator.loadRecentChats(message.getRoom());
+        // 실제 답변 생성 (30개)
+        List<ChatTurnVo> replyRecentChats = recentChatRedisDecorator.loadRecentChats(message.getRoom());
 
         Prompt prompt;
         if (!needsRag(message.getMsg())) {
-            prompt = promptService.buildReplyPrompt(message, recentChatTurns);
+            prompt = promptService.buildReplyPrompt(message, replyRecentChats);
         }
         else {
             List<RagContextMessageVo> ragContextMessages = getRagContext(message, embedding);
-            prompt = promptService.buildReplyPrompt(message, recentChatTurns, ragContextMessages);
+            prompt = promptService.buildReplyPrompt(message, replyRecentChats, ragContextMessages);
         }
         return prompt;
     }

@@ -33,7 +33,6 @@ public class BufferRedisDecorator {
         String k = bufferKey(roomId, sender);
         List<String> parts = redisTemplate.opsForList().range(k, 0, -1);
         if (parts == null || parts.isEmpty()) return "";
-        // 줄바꿈으로 합치면 “여러 메시지에 걸친 질문”이 자연스럽게 유지됨
         return String.join(" ", parts).trim();
     }
 
