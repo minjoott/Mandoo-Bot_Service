@@ -3,6 +3,7 @@ package minjoott.mandooBot.aop;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import minjoott.mandooBot.domain.dto.RedisBufferDecision;
 import minjoott.mandooBot.domain.vo.ChatTurnVo;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import org.aspectj.lang.annotation.*;
@@ -19,6 +20,30 @@ import java.util.List;
 public class ChatDebugLogAspect {
 
     private final ObjectMapper objectMapper;
+
+    // ✅ (0) 버퍼 통합본 조회 로그
+    @AfterReturning(
+            pointcut = "execution(* minjoott.mandooBot.decorator.BufferRedisDecorator.readMergedBuffer(..)) && args(roomId, sender)",
+            returning = "merged"
+    )
+    public void logReadMergedBuffer(String roomId, String sender, String merged) {
+        int len = (merged == null) ? 0 : merged.length();
+        int parts = (merged == null || merged.isBlank()) ? 0 : merged.split("\\s+", -1).length;
+
+        log.info("🧩[trace={}] bufferMerged room={} sender={} parts~={} len={} preview=\"{}\"",
+                trace(), roomId, sender, parts, len, oneLine(merged).replaceAll("\\r?\\n", " ")
+        );
+    }
+
+    // ✅ (0) 버퍼 통합본 확정 여부 및 만두 답변 필요 여부 확인 로그
+    @AfterReturning(
+            pointcut = "execution(minjoott.mandooBot.domain.dto.RedisBufferDecision minjoott.mandooBot.decorator.ExternalAiClientDecorator.getBufferDecision(..))",
+            returning = "decision"
+    )
+    public void logBufferDecision(RedisBufferDecision decision) {
+        log.info("🧠[trace={}] bufferDecision complete={} needsMandoo={}",
+                trace(), decision.getComplete(), decision.getNeedsMandoo());
+    }
 
     // ✅ (1) RAG 필요 여부 결정 결과
     @AfterReturning(
@@ -41,8 +66,7 @@ public class ChatDebugLogAspect {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("\n📜[trace=").append(trace())
-                .append(" | recentChatTurns size=").append(turns.size());
+        sb.append("\n📜[trace=").append(trace()).append(" | recentChatTurns size=").append(turns.size());
 
         for (int i = 0; i < turns.size(); i++) {
             ChatTurnVo t = turns.get(i);

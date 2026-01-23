@@ -19,6 +19,12 @@ import java.util.List;
 @Service
 public class PromptService {
 
+    public Prompt buildBufferDecisionPrompt(String mergedBufferText) {
+        SystemMessage systemMessage = new SystemMessage(PromptTemplate.MESSAGE_BUFFER_DECISION.format(mergedBufferText));
+        UserMessage userMessage = new UserMessage("버퍼 통합본: " + mergedBufferText);
+        return new Prompt(List.of(systemMessage, userMessage), OpenAiOptions.MESSAGE_BUFFER_DECISION);
+    }
+
     public Prompt buildRagContextDecisionPrompt(String query) {
         SystemMessage systemMessage = new SystemMessage(PromptTemplate.RAG_CONTEXT_DECISION.format(query));
         UserMessage userMessage = new UserMessage("사용자 메시지: " + query);
@@ -34,7 +40,7 @@ public class PromptService {
 
     public Prompt buildReplyPrompt(MessageVo message, List<ChatTurnVo> recentChatTurns) {
         SystemMessage baseSystemMessage = new SystemMessage(PromptTemplate.REPLY_WITHOUT_RAG_CONTEXT.format(message.getSender(), message.getMsg()));
-        SystemMessage nowSystemMessage = new SystemMessage("#현재 시각 정보 : "+ message.getDateTime());
+        SystemMessage nowSystemMessage = new SystemMessage("#현재 시각: "+ message.getDateTime());
         SystemMessage recentContextMessage = toRecentContextMessage(recentChatTurns);
         UserMessage userQueryMessage = new UserMessage(message.getSender() + ": " + message.getMsg() + "\n");
         return new Prompt(List.of(baseSystemMessage, nowSystemMessage, recentContextMessage, userQueryMessage), OpenAiOptions.REPLY);
@@ -42,7 +48,7 @@ public class PromptService {
 
     public Prompt buildReplyPrompt(MessageVo message, List<ChatTurnVo> recentChatTurns, List<RagContextMessageVo> ragContextMessages) {
         SystemMessage baseSystemMessage = new SystemMessage(PromptTemplate.REPLY_WITH_RAG_CONTEXT.format(message.getSender(), message.getMsg()));
-        SystemMessage nowSystemMessage = new SystemMessage("#현재 시각 정보 : "+ message.getDateTime());
+        SystemMessage nowSystemMessage = new SystemMessage("#현재 시각: "+ message.getDateTime());
         SystemMessage recentContextMessage = toRecentContextMessage(recentChatTurns);
         SystemMessage ragContextMessage = toSimilarContextMessage(ragContextMessages);
         UserMessage userQueryMessage = new UserMessage(message.getSender() + ": " + message.getMsg() + "\n");
@@ -65,7 +71,7 @@ public class PromptService {
 
         for (ChatTurnVo t : recentChatTurns) {
             String user = t.getUser().replaceAll("\\r?\\n", " ").trim();
-            String query = t.getQuery().replaceAll("\\r?\\n", " ").trim();
+            String query = t.getQuery().replaceAll("\t", " ").replaceAll("\\r?\\n", " ").trim();
 
             sb.append(user).append(": ").append(query);
             String reply = t.getReply();
@@ -80,11 +86,11 @@ public class PromptService {
 
     private String assembleRagContextMessages(List<RagContextMessageVo> ragContextMessages) {
         StringBuilder sb = new StringBuilder();
-        sb.append("\n[참고: 관련 과거 메시지 | 오래된순]\n");
+        sb.append("\n[참고: 관련 과거 메시지 (RAG 컨텍스트) | 오래된순]\n");
 
         for (RagContextMessageVo m : ragContextMessages) {
             String sender = m.getSender().replaceAll("\\r?\\n", " ").trim();
-            String msg = m.getMsg().replaceAll("\\r?\\n", " ").trim();
+            String msg = m.getMsg().replaceAll("\t", " ").replaceAll("\\r?\\n", " ").trim();
             String dateTime = m.getDateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
 
             sb.append(sender).append(" (").append(dateTime).append("): ").append(msg).append("\n");

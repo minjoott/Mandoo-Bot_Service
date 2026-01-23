@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import minjoott.mandooBot.config.OpenAiOptions;
+import minjoott.mandooBot.domain.dto.RedisBufferDecision;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -26,6 +26,25 @@ public class ExternalAiClientDecorator {
     private final OpenAiChatModel openAiChatModel;
     private final OpenAiEmbeddingModel openAiEmbeddingModel;
     private final ObjectMapper objectMapper;
+
+    public RedisBufferDecision getBufferDecision(Prompt prompt) {
+        String raw = callChatApi(prompt);
+
+        // '{' ~ '}' 사이 JSON만 잘라서 파싱 (모델이 앞뒤 텍스트를 섞어도 방어)
+        int s = raw.indexOf('{');
+        int e = raw.lastIndexOf('}');
+        if (s < 0 || e < 0 || e <= s) {
+            return RedisBufferDecision.builder().complete("X").needsMandoo("N").build();
+        }
+
+        String json = raw.substring(s, e + 1).trim();
+        try {
+            return objectMapper.readValue(json, RedisBufferDecision.class);
+        } catch (Exception ex) {
+            log.error("⛔️ BufferDecision JSON 파싱 실패: {}", ex.getMessage());
+            return RedisBufferDecision.builder().complete("X").needsMandoo("N").build();
+        }
+    }
 
     public float[] getEmbedding(String query) {
         EmbeddingRequest embeddingRequest = new EmbeddingRequest(List.of(query), OpenAiOptions.EMBEDDING);
@@ -48,17 +67,11 @@ public class ExternalAiClientDecorator {
 
         // Jackson 객체 매퍼로 JSON 파싱하여 List<RagContextMessageVo>로 변환
         try {
-            List<RagContextMessageVo> messageVos = objectMapper.readValue(
+            return objectMapper.readValue(
                     justJson, new TypeReference<List<RagContextMessageVo>>() {}
             );
-            String assembledMessageVos = messageVos.stream()
-                    .map(vo -> String.format("%s [%s] \"%s\"",
-                            vo.getDateTime(), vo.getSender(), vo.getMsg().replaceAll("\\r?\\n", " ")
-                    ))
-                    .collect(Collectors.joining("\n"));
-            return messageVos;
         } catch (Exception e) {
-            log.error("\n⛔️ JSON 파싱 실패: {}", e.getMessage());
+            log.error("\n⛔️ RagContextMessages JSON 파싱 실패: {}", e.getMessage());
             return Collections.emptyList();
         }
     }

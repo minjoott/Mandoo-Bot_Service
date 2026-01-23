@@ -19,6 +19,9 @@ import java.util.Set;
 @Component
 public class RecentChatRedisDecorator {
 
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
+
     /** 최근 컨텍스트 윈도우 */
     private static final Duration WINDOW = Duration.ofHours(24);
 
@@ -32,9 +35,6 @@ public class RecentChatRedisDecorator {
      * - WINDOW(24h)보다 살짝 크게(예: 25h) 잡아 안전 마진
      */
     private static final Duration KEY_TTL = Duration.ofHours(25);
-
-    private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
 
     private String key(String roomId) {
         return "chat:turns:zset:" + roomId;

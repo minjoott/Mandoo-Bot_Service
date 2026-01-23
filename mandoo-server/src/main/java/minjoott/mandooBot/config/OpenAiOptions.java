@@ -7,6 +7,13 @@ import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 @UtilityClass
 public final class OpenAiOptions {
 
+    public final OpenAiChatOptions MESSAGE_BUFFER_DECISION = OpenAiChatOptions.builder()
+            .model("gpt-4.1")
+            .temperature(0.0)
+            .topP(1.0)
+            .maxTokens(80)
+            .build();
+
     public final OpenAiEmbeddingOptions EMBEDDING = OpenAiEmbeddingOptions.builder()
             .model("text-embedding-3-small")
             .build();

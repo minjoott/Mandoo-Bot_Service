@@ -23,6 +23,17 @@ public class MessageVo {
     @Builder.Default
     private LocalDateTime dateTime = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
+    public MessageVo withCompleteMsg(String newMsg) {
+        return MessageVo.builder()
+                .id(this.id)
+                .room(this.room)
+                .sender(this.sender)
+                .msg(newMsg)
+                .isGroupChat(this.isGroupChat)
+                .dateTime(this.dateTime)
+                .build();
+    }
+
     public Message toEntity(float[] embedding) {
         return Message.builder()
                 .room(this.room)
@@ -42,4 +53,5 @@ public class MessageVo {
                 .reply(reply)
                 .build();
     }
+
 }
