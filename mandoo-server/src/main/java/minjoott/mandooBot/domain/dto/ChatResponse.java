@@ -2,8 +2,8 @@ package minjoott.mandooBot.domain.dto;
 
 import lombok.*;
 
-@Getter
 @AllArgsConstructor
+@Getter
 public class ChatResponse {
 
     private boolean hasReply;

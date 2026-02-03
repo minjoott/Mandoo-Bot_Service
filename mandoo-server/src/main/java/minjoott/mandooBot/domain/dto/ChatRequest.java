@@ -1,25 +1,22 @@
 package minjoott.mandooBot.domain.dto;
 
-import lombok.*;
-import minjoott.mandooBot.domain.vo.MessageVo;
-
 import javax.validation.constraints.NotNull;
 
-@Getter
+import lombok.*;
+
+import minjoott.mandooBot.domain.vo.MessageVo;
+
 @NoArgsConstructor
+@Getter
 public class ChatRequest {
 
-    @NotNull
-    private String room;
+    @NotNull private String room;
 
-    @NotNull
-    private String sender;
+    @NotNull private String sender;
 
-    @NotNull
-    private String msg;
+    @NotNull private String msg;
 
-    @NotNull
-    private Boolean isGroupChat;
+    @NotNull private Boolean isGroupChat;
 
     public MessageVo toVo() {
         return MessageVo.builder()
@@ -29,5 +26,6 @@ public class ChatRequest {
                 .isGroupChat(this.isGroupChat)
                 .build();
     }
+
 }
 

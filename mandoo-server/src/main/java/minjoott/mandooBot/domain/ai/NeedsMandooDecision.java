@@ -1,4 +1,4 @@
-package minjoott.mandooBot.domain.vo;
+package minjoott.mandooBot.domain.ai;
 
 import lombok.*;
 
@@ -7,7 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class NeedsMandooDecision {
-    private String needsMandoo; // "O" | "X"
+    private String needsMandoo;  // "O" | "X"
 
     public boolean isNeedsMandoo() {
         return "O".equalsIgnoreCase(needsMandoo);

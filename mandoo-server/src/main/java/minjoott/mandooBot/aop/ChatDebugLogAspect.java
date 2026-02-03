@@ -3,9 +3,10 @@ package minjoott.mandooBot.aop;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import minjoott.mandooBot.domain.vo.BufferCompleteDecision;
+import minjoott.mandooBot.domain.ai.BufferCompleteDecision;
+import minjoott.mandooBot.domain.ai.NeedsRagContextDecision;
 import minjoott.mandooBot.domain.vo.ChatTurnVo;
-import minjoott.mandooBot.domain.vo.NeedsMandooDecision;
+import minjoott.mandooBot.domain.ai.NeedsMandooDecision;
 import minjoott.mandooBot.domain.vo.RagContextMessageVo;
 import org.aspectj.lang.annotation.*;
 import org.slf4j.MDC;
@@ -38,7 +39,7 @@ public class ChatDebugLogAspect {
 
     // ✅ (0) 버퍼 통합본 "완결 여부" 판단 로그
     @AfterReturning(
-            pointcut = "execution(minjoott.mandooBot.domain.vo.BufferCompleteDecision " +
+            pointcut = "execution(minjoott.mandooBot.domain.ai.BufferCompleteDecision " +
                     "minjoott.mandooBot.decorator.ExternalAiClientDecorator.getBufferCompleteDecision(..))",
             returning = "decision"
     )
@@ -48,7 +49,7 @@ public class ChatDebugLogAspect {
 
     // ✅ (0) 버퍼 통합본 "만두 답변 필요 여부" 판단 로그
     @AfterReturning(
-            pointcut = "execution(minjoott.mandooBot.domain.vo.NeedsMandooDecision " +
+            pointcut = "execution(minjoott.mandooBot.domain.ai.NeedsMandooDecision " +
                     "minjoott.mandooBot.decorator.ExternalAiClientDecorator.getNeedsMandooDecision(..))",
             returning = "decision"
     )
@@ -58,11 +59,12 @@ public class ChatDebugLogAspect {
 
     // ✅ (1) RAG 필요 여부 결정 결과
     @AfterReturning(
-            pointcut = "execution(boolean minjoott.mandooBot.decorator.ExternalAiClientDecorator.getRagContextDecision(..))",
+            pointcut = "execution(minjoott.mandooBot.domain.ai.NeedsRagContextDecision " +
+                    "minjoott.mandooBot.decorator.ExternalAiClientDecorator.getRagContextDecision(..))\",",
             returning = "decision"
     )
-    public void logRagDecision(boolean decision) {
-        log.info("🧠[trace={}] ragNeeded = {}", trace(), decision);
+    public void logRagDecision(NeedsRagContextDecision decision) {
+        log.info("🧠[trace={}] ragNeeded = {}", trace(), decision.getNeedsRagContext());
     }
 
     // ✅ (2) 최근 대화 이력 "전체" 출력

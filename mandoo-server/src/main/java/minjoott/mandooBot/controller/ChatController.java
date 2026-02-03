@@ -1,17 +1,16 @@
 package minjoott.mandooBot.controller;
 
+import javax.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
 import minjoott.mandooBot.domain.dto.ChatResponse;
 import minjoott.mandooBot.domain.dto.ChatRequest;
 import minjoott.mandooBot.service.ChatService;
-import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
-
-@Slf4j
-@RequiredArgsConstructor
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/chat")
 public class ChatController {
 

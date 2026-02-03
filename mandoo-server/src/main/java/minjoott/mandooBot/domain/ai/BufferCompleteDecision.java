@@ -1,4 +1,4 @@
-package minjoott.mandooBot.domain.vo;
+package minjoott.mandooBot.domain.ai;
 
 import lombok.*;
 
@@ -7,7 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class BufferCompleteDecision {
-    private String complete;     // "O" | "X"
+    private String complete;   // "O" | "X"
 
     public boolean isComplete() {
         return "O".equalsIgnoreCase(complete);

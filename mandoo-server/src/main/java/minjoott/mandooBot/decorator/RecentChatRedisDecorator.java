@@ -1,20 +1,21 @@
 package minjoott.mandooBot.decorator;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import minjoott.mandooBot.domain.dto.RedisChatTurn;
-import minjoott.mandooBot.domain.vo.ChatTurnVo;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Component;
+
+import minjoott.mandooBot.domain.dto.RedisChatTurn;
+import minjoott.mandooBot.domain.vo.ChatTurnVo;
+import org.springframework.beans.factory.annotation.Value;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -28,11 +29,9 @@ public class RecentChatRedisDecorator {
     private static final Duration WINDOW = Duration.ofHours(24);
 
     /** 최대 보관 턴 수 */
-    @Value("${chat.history.max-turns}")
-    private int maxTurns;
+    @Value("${chat.history.max-turns}") private int maxTurns;
 
-    @Value("${chat.history.decision-max-turns}")
-    private int decisionMaxTurns;
+    @Value("${chat.history.decision-max-turns}") private int decisionMaxTurns;
 
     /**
      * 방이 완전히 멈추면 키 통째로 정리되게 하는 TTL (WINDOW + α)
@@ -43,11 +42,6 @@ public class RecentChatRedisDecorator {
 
     private String key(String roomId) {
         return "chat:turns:zset:" + roomId;
-    }
-
-    /** room의 최근 대화 로드: "최근 24시간" AND "최신 decisionMaxTurns개" */
-    public List<ChatTurnVo> loadRecentChatsForNeedsMandooDecision(String roomId) {
-        return loadRecentChats(roomId, decisionMaxTurns);
     }
 
     /** room의 최근 대화 로드: "최근 24시간" AND "최신 limit개" */
@@ -73,12 +67,6 @@ public class RecentChatRedisDecorator {
         );
         Collections.reverse(list);
         return list;
-
-    }
-
-    /** room의 최근 대화 로드: "최근 24시간" AND "최신 maxTurns개" */
-    public List<ChatTurnVo> loadRecentChats(String roomId) {
-        return loadRecentChats(roomId, maxTurns);
     }
 
     /** room에 대화 턴 추가 + 24시간/개수 기준으로 정리 */

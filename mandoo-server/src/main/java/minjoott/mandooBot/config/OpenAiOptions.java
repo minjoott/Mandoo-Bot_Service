@@ -29,7 +29,7 @@ public final class OpenAiOptions {
             .model("gpt-4.1")
             .temperature(0.0)
             .topP(1.0)
-            .maxTokens(5)
+            .maxTokens(80)
             .build();
 
     public final OpenAiChatOptions RAG_CONTEXT_FILTER = OpenAiChatOptions.builder()

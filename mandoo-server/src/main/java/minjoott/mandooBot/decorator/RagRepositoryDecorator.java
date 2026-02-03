@@ -17,16 +17,9 @@ import java.util.List;
 public class RagRepositoryDecorator {
 
     private final MessageRepository messageRepository;
-    private final ExternalAiClientDecorator externalAiClientDecorator;
 
-    @Value("${chat.rag.distance.max}")
-    private double maxDistance;
-    @Value("${chat.rag.distance.limit}")
-    private int distanceLimit;
-
-    public float[] generateEmbedding(String text) {
-        return externalAiClientDecorator.getEmbedding(text);
-    }
+    @Value("${chat.rag.distance.max}") private double maxDistance;
+    @Value("${chat.rag.distance.limit}") private int distanceLimit;
 
     public List<RagContextMessageVo> findMessagesWithEmbedding(MessageVo message, float[] embedding) {
         List<Message> ragContextMessages = message.isGroupChat()

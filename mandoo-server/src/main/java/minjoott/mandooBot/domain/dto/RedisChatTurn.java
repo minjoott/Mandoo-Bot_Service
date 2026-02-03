@@ -1,29 +1,26 @@
 package minjoott.mandooBot.domain.dto;
 
+import javax.validation.constraints.NotNull;
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
 import minjoott.mandooBot.domain.vo.ChatTurnVo;
 
-import javax.validation.constraints.NotNull;
-import java.util.List;
-
-@Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
 @Builder
 public class RedisChatTurn {
 
-    @NotNull
-    private String dateTime;
+    @NotNull private String dateTime;
 
-    @NotNull
-    private String user;
+    @NotNull private String user;
 
-    @NotNull
-    private String query;
-
+    @NotNull private String query;
     private String reply;
 
     public static List<ChatTurnVo> toVoList(List<RedisChatTurn> redisTurns) {
